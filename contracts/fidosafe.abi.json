@@ -1,0 +1,129 @@
+{
+	"ABI version": 2,
+	"header": ["pubkey", "time", "expire"],
+	"functions": [
+		{
+			"name": "constructor",
+			"inputs": [
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "getUsers",
+			"inputs": [
+			],
+			"outputs": [
+				{"components":[{"name":"pubkey","type":"uint256"},{"name":"role","type":"uint8"}],"name":"us","type":"tuple[]"}
+			]
+		},
+		{
+			"name": "getNumConfirmations",
+			"inputs": [
+				{"name":"trId","type":"uint32"}
+			],
+			"outputs": [
+				{"name":"accepted","type":"uint8"},
+				{"name":"declined","type":"uint8"}
+			]
+		},
+		{
+			"name": "addUser",
+			"inputs": [
+				{"name":"pubkey","type":"uint256"},
+				{"name":"trId","type":"uint32"}
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "removeUser",
+			"inputs": [
+				{"name":"pubkey","type":"uint256"},
+				{"name":"trId","type":"uint32"}
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "changeReqConfirmations",
+			"inputs": [
+				{"name":"trId","type":"uint32"},
+				{"name":"newReqConfirmations","type":"uint8"}
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "resolveTransaction",
+			"inputs": [
+				{"name":"trId","type":"uint32"},
+				{"name":"resolution","type":"uint8"}
+			],
+			"outputs": [
+			]
+		},
+		{
+			"name": "getTransactions",
+			"inputs": [
+				{"name":"sId","type":"uint128"}
+			],
+			"outputs": [
+				{"components":[{"name":"id","type":"uint32"},{"components":[{"name":"pubkey","type":"uint256"},{"name":"role","type":"uint8"}],"name":"initiator","type":"tuple"},{"name":"params","type":"cell"},{"name":"status","type":"uint8"},{"name":"created","type":"uint32"},{"name":"trType","type":"uint8"}],"name":"trans","type":"tuple[]"}
+			]
+		},
+		{
+			"name": "getConfirmations",
+			"inputs": [
+				{"name":"trId","type":"uint32"}
+			],
+			"outputs": [
+				{"components":[{"name":"transactionId","type":"uint32"},{"components":[{"name":"pubkey","type":"uint256"},{"name":"role","type":"uint8"}],"name":"user","type":"tuple"},{"name":"resolution","type":"uint8"},{"name":"created","type":"uint32"}],"name":"confs","type":"tuple[]"}
+			]
+		},
+		{
+			"name": "addUserMsg",
+			"inputs": [
+				{"name":"pubkey","type":"uint256"},
+				{"name":"trId","type":"uint32"}
+			],
+			"outputs": [
+				{"name":"message","type":"cell"}
+			]
+		},
+		{
+			"name": "removeUserMsg",
+			"inputs": [
+				{"name":"pubkey","type":"uint256"},
+				{"name":"trId","type":"uint32"}
+			],
+			"outputs": [
+				{"name":"message","type":"cell"}
+			]
+		},
+		{
+			"name": "resolveTransactionMsg",
+			"inputs": [
+				{"name":"resolution","type":"uint8"},
+				{"name":"trId","type":"uint32"}
+			],
+			"outputs": [
+				{"name":"message","type":"cell"}
+			]
+		},
+		{
+			"name": "setRequiredConfirmations",
+			"inputs": [
+				{"name":"confirmNum","type":"uint8"},
+				{"name":"trId","type":"uint32"}
+			],
+			"outputs": [
+				{"name":"message","type":"cell"}
+			]
+		}
+	],
+	"data": [
+	],
+	"events": [
+	]
+}
