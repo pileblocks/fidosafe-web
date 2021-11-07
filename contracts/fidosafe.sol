@@ -85,38 +85,13 @@ contract FidoSafe {
     }
 
     //---------------------------------
-    // On-chain functions, service operations
+    // On-chain functions, service functions
     //---------------------------------
 
     function genTransactionId() private returns (uint32) {
         rnd.shuffle();
         uint32 id = rnd.next(uint32(0xFFFFFFFF)) | 0xF0000000;
         return id;
-    }
-
-    function getUsers() public returns (User[] users) {
-        for ((uint256 pubkey, User user) : mUsers) {
-            users.push(user);
-        }
-    }
-
-    function getNumConfirmations(uint32 trId) public returns (uint8 accepted, uint8 declined) {
-
-        accepted = 0;
-        declined = 0;
-
-        if (mConfirmations.exists(trId)) {
-            Confirmation[] confs = mConfirmations[trId];
-            for (Confirmation conf : confs) {
-            if (conf.resolution == CONFIRMATION_ACCEPT) {
-            accepted += 1;
-            }
-            else if (conf.resolution == CONFIRMATION_DECLINE) {
-            declined += 1;
-            }
-            }
-        }
-        return (accepted, declined);
     }
 
     function isActiveTransaction(uint32 trId) private returns (bool) {
@@ -161,7 +136,6 @@ contract FidoSafe {
         return slice.decode(uint256);
     }
 
-
     function addUser(uint256 pubkey, uint32 trId) onlyAdmin public {
         // Check if the user is already among the users
         require(!mUsers.exists(pubkey), OP_CODE_CONFLICT, "User already exists");
@@ -198,11 +172,9 @@ contract FidoSafe {
             tr.status = TR_STATUS_CONFIRMED;
             mUsers[pubkey] = User(pubkey, 1);
         }
-
         if (declined > numUsers - requiredConfirmations) {
             tr.status = TR_STATUS_DECLINED;
         }
-
         mTransactions[trId] = tr;
     }
 
@@ -275,11 +247,16 @@ contract FidoSafe {
     // Off-chain functions
     //---------------------------------
 
+    function getUsers() public returns (User[] users) {
+        for ((uint256 pubkey, User user) : mUsers) {
+            users.push(user);
+        }
+    }
+
     function getTransactions() public view returns (Transaction[] transactions) {
         for ((, Transaction tr) : mTransactions) {
-        transactions.push(tr);
+            transactions.push(tr);
         }
-    return transactions;
     }
 
     function getConfirmations(uint32 trId) public view returns (Confirmation[] confirmations) {
@@ -292,5 +269,23 @@ contract FidoSafe {
         return confirmations;
     }
 
+    function getNumConfirmations(uint32 trId) public returns (uint8 accepted, uint8 declined) {
+
+        accepted = 0;
+        declined = 0;
+
+        if (mConfirmations.exists(trId)) {
+            Confirmation[] confs = mConfirmations[trId];
+            for (Confirmation conf : confs) {
+                if (conf.resolution == CONFIRMATION_ACCEPT) {
+                    accepted += 1;
+                }
+                else if (conf.resolution == CONFIRMATION_DECLINE) {
+                    declined += 1;
+                }
+            }
+        }
+        return (accepted, declined);
+    }
 
 }

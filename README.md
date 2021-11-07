@@ -9,7 +9,7 @@ http://localhost:8080/#/0:a5824355d891873b6f59a0a8b84a06dfb3bd7cc222fd952fd13ea9
 
  
 
-## Install the requirements for the web app
+### Install the requirements for the web app
 ```
 npm install
 ```
@@ -23,11 +23,11 @@ npm run serve
 
 ```
 cd contracts
-tondev sol compile contracts/fidosafe.sol
-tondev contract deploy contracts/fidosafe.sol --network se -v 100000000000
+tondev sol compile fidosafe.sol
+tondev contract deploy fidosafe.sol --network se -v 100000000000
 ```
 
-###(Optional) Update the ABI wrapper
+### (Optional) Update the ABI wrapper
 
 ```dockerfile
 tondev js wrap fidosafe.abi.json
