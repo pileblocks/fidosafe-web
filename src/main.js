@@ -16,6 +16,20 @@ Vue.use(BootstrapVue);
 Vue.use(IconsPlugin);
 Vue.use(ToastPlugin);
 
+import { TonClient } from '@tonclient/core';
+import { libWeb } from '@tonclient/lib-web';
+
+TonClient.useBinaryLibrary(libWeb);
+
+TonClient.defaultConfig = {
+    network: {
+        // Local node URL here
+        endpoints: ['http://localhost']
+    },
+};
+
+
+
 new Vue({
   router,
   store,

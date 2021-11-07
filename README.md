@@ -1,19 +1,50 @@
-# web
+# FidoSafe 0.1
 
-## Project setup
+Firstly, build the web app, then compile and deploy contract.
+
+Then create a couple of users by AddUser (user the transaction Id = 0).
+
+Finally, view the list of users at http://localhost:8080/#/<contract address>, for example, 
+http://localhost:8080/#/0:a5824355d891873b6f59a0a8b84a06dfb3bd7cc222fd952fd13ea91b5c0124fc
+
+ 
+
+## Install the requirements for the web app
 ```
 npm install
 ```
 
-### Compiles and hot-reloads for development
+### Run the app
 ```
 npm run serve
 ```
 
-### Compiles and minifies for production
+### Compile and deploy the contract
+
 ```
-npm run build
+cd contracts
+tondev sol compile contracts/fidosafe.sol
+tondev contract deploy contracts/fidosafe.sol --network se -v 100000000000
 ```
 
-### Customize configuration
-See [Configuration Reference](https://cli.vuejs.org/config/).
+###(Optional) Update the ABI wrapper
+
+```dockerfile
+tondev js wrap fidosafe.abi.json
+mv FidosafeContract.js ../contract_wrappers
+```
+
+### Create a user
+
+```
+tondev c run fidosafe -n se
+```
+
+1. Choose AddUser
+2. Specify 
+  pubkey (uint256): 0x1bdfe03401657bfb1aae235be487b9641f0056965eb5573c17ed3685750e3000
+  trId (uint32): 0
+3. Run the web app with the deployed contract address, for example
+http://localhost:8080/#/0:a5824355d891873b6f59a0a8b84a06dfb3bd7cc222fd952fd13ea91b5c0124fc
+
+You'll see the list of users.

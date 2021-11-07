@@ -18,6 +18,7 @@ contract FidoSafe {
         uint32 id;
         User initiator;
         TvmCell params;
+        string paramsStr;
         uint8 status;
         uint32 created;
         uint8 trType;
@@ -48,11 +49,11 @@ contract FidoSafe {
     // Safe ID
     uint128 safeId;
 
-    mapping(uint32 => Transaction) transactions;
+    mapping(uint32 => Transaction) mTransactions;
 
-    mapping(uint256 => User) users;
+    mapping(uint256 => User) mUsers;
 
-    mapping(uint32 => Confirmation[]) confirmations;
+    mapping(uint32 => Confirmation[]) mConfirmations;
 
     uint constant OP_CODE_CONFLICT = 409;
     uint constant OP_CODE_INVALID = 400;
@@ -65,7 +66,7 @@ contract FidoSafe {
         uint256 pubkey = msg.pubkey();
         require(pubkey != 0, 120);
         tvm.accept();
-        users[pubkey] = User(pubkey, 1);
+        mUsers[pubkey] = User(pubkey, 1);
         requiredConfirmations = 1;
     }
 
@@ -77,7 +78,7 @@ contract FidoSafe {
     }
 
     function isInAdmins(uint256 pubkey) private returns (bool) {
-        if (users.exists(pubkey) && users[pubkey].role == USER_ROLE_ADMIN) {
+        if (mUsers.exists(pubkey) && mUsers[pubkey].role == USER_ROLE_ADMIN) {
             return true;
         }
         return false;
@@ -93,9 +94,9 @@ contract FidoSafe {
         return id;
     }
 
-    function getUsers() public returns (User[] us) {
-        for ((uint256 pubkey, User user) : users) {
-        us.push(user);
+    function getUsers() public returns (User[] users) {
+        for ((uint256 pubkey, User user) : mUsers) {
+            users.push(user);
         }
     }
 
@@ -104,8 +105,8 @@ contract FidoSafe {
         accepted = 0;
         declined = 0;
 
-        if (confirmations.exists(trId)) {
-            Confirmation[] confs = confirmations[trId];
+        if (mConfirmations.exists(trId)) {
+            Confirmation[] confs = mConfirmations[trId];
             for (Confirmation conf : confs) {
             if (conf.resolution == CONFIRMATION_ACCEPT) {
             accepted += 1;
@@ -119,8 +120,8 @@ contract FidoSafe {
     }
 
     function isActiveTransaction(uint32 trId) private returns (bool) {
-        if (transactions.exists(trId)) {
-            Transaction tr = transactions[trId];
+        if (mTransactions.exists(trId)) {
+            Transaction tr = mTransactions[trId];
             if (tr.status == TR_STATUS_IN_PROGRESS) {
                 return true;
             }
@@ -129,8 +130,8 @@ contract FidoSafe {
     }
 
     function setTransactionStatus(uint32 trId, uint8 status) private {
-        if (transactions.exists(trId)) {
-            transactions[trId].status = status;
+        if (mTransactions.exists(trId)) {
+            mTransactions[trId].status = status;
         }
     }
 
@@ -144,9 +145,9 @@ contract FidoSafe {
     }
 
     function addConfirmation(uint32 trId, User user) private {
-        if (!confExists(trId, user, confirmations[trId])) {
+        if (!confExists(trId, user, mConfirmations[trId])) {
             Confirmation conf = Confirmation(trId, user, CONFIRMATION_ACCEPT, now);
-            confirmations[trId].push(conf);
+            mConfirmations[trId].push(conf);
         }
     }
 
@@ -155,7 +156,7 @@ contract FidoSafe {
     //
 
     function addUserParser(uint32 trId) private returns (uint256 pubkey) {
-        Transaction tr = transactions[trId];
+        Transaction tr = mTransactions[trId];
         TvmSlice slice = tr.params.toSlice();
         return slice.decode(uint256);
     }
@@ -163,14 +164,14 @@ contract FidoSafe {
 
     function addUser(uint256 pubkey, uint32 trId) onlyAdmin public {
         // Check if the user is already among the users
-        require(!users.exists(pubkey), OP_CODE_CONFLICT, "User already exists");
+        require(!mUsers.exists(pubkey), OP_CODE_CONFLICT, "User already exists");
 
         Transaction tr;
-        User user = users[msg.pubkey()];
+        User user = mUsers[msg.pubkey()];
         // Check if the transaction exists and its status is in progress, if not = create a transaction
         if (trId != 0) {
             require(isActiveTransaction(trId), OP_CODE_CONFLICT, "The transaction is not active or does not exist");
-            tr = transactions[trId];
+            tr = mTransactions[trId];
             // Check that the type of the transaction corresponds to addUser
             require(tr.trType == TR_TYPE_ADD_USER, OP_CODE_CONFLICT, "The transaction type is from a different operation");
             require(addUserParser(trId) == pubkey, OP_CODE_CONFLICT, "The transaction data is different to the requested operation data");
@@ -180,7 +181,7 @@ contract FidoSafe {
             TvmBuilder params;
             params.store(pubkey);
             TvmCell paramsCell = params.toCell();
-            tr = Transaction(trId, user, paramsCell, TR_STATUS_IN_PROGRESS, now, TR_TYPE_ADD_USER);
+            tr = Transaction(trId, user, paramsCell, format("0x{:x}", pubkey), TR_STATUS_IN_PROGRESS, now, TR_TYPE_ADD_USER);
         }
 
         // add the confirmation if not already exists
@@ -195,33 +196,33 @@ contract FidoSafe {
         // change the transaction status
         if (accepted >= requiredConfirmations) {
             tr.status = TR_STATUS_CONFIRMED;
-            users[pubkey] = User(pubkey, 1);
+            mUsers[pubkey] = User(pubkey, 1);
         }
 
         if (declined > numUsers - requiredConfirmations) {
             tr.status = TR_STATUS_DECLINED;
         }
 
-        transactions[trId] = tr;
+        mTransactions[trId] = tr;
     }
 
     function removeUser(uint256 pubkey, uint32 trId) onlyAdmin public {
         // TODO: if req confirmations more than the remaining users => dec the conf number
         tvm.accept();
-        if (users.exists(pubkey)) {
-            delete users[pubkey];
+        if (mUsers.exists(pubkey)) {
+            delete mUsers[pubkey];
         }
     }
 
     function changeConfirmationsParser(uint32 trId) private returns (uint8 numConfirms) {
-        Transaction tr = transactions[trId];
+        Transaction tr = mTransactions[trId];
         TvmSlice slice = tr.params.toSlice();
         return slice.decode(uint8);
     }
 
     function changeReqConfirmations(uint32 trId, uint8 newReqConfirmations) onlyAdmin public {
         Transaction tr;
-        User user = users[msg.pubkey()];
+        User user = mUsers[msg.pubkey()];
         uint8 numUsers = uint8(getUsers().length);
 
         require(newReqConfirmations <= numUsers, OP_CODE_CONFLICT, "The number of confirmations must not exceed the number of users");
@@ -229,7 +230,7 @@ contract FidoSafe {
         // Check if the transaction exists and its status is in progress, if not = create a transaction
         if (trId != 0) {
             require(isActiveTransaction(trId), OP_CODE_CONFLICT, "The transaction is not active");
-            tr = transactions[trId];
+            tr = mTransactions[trId];
             // Check that the type of the transaction corresponds to addUser
             require(tr.trType == TR_TYPE_CHANGE_CONFIRMS, OP_CODE_CONFLICT, "The transaction type is from a different operation");
             require(changeConfirmationsParser(trId) == newReqConfirmations, OP_CODE_CONFLICT, "The transaction data is different to the requested operation data");
@@ -239,7 +240,7 @@ contract FidoSafe {
             TvmBuilder params;
             params.store(newReqConfirmations);
             TvmCell paramsCell = params.toCell();
-            tr = Transaction(trId, user, paramsCell, TR_STATUS_IN_PROGRESS, now, TR_TYPE_CHANGE_CONFIRMS);
+            tr = Transaction(trId, user, paramsCell, format("{}", newReqConfirmations), TR_STATUS_IN_PROGRESS, now, TR_TYPE_CHANGE_CONFIRMS);
         }
         // add the confirmation if not already exists
         addConfirmation(trId, user);
@@ -257,16 +258,16 @@ contract FidoSafe {
         if (declined > numUsers - requiredConfirmations) {
             tr.status = TR_STATUS_DECLINED;
         }
-        transactions[trId] = tr;
+        mTransactions[trId] = tr;
     }
 
     function resolveTransaction(uint32 trId, uint8 resolution) onlyAdmin public {
         require(isActiveTransaction(trId), OP_CODE_CONFLICT, "The transaction is not active or does not exist");
-        User user = users[msg.pubkey()];
-        require(!confExists(trId, user, confirmations[trId]), OP_CODE_CONFLICT, "You have already provided the resolution");
+        User user = mUsers[msg.pubkey()];
+        require(!confExists(trId, user, mConfirmations[trId]), OP_CODE_CONFLICT, "You have already provided the resolution");
         require(resolution == CONFIRMATION_ACCEPT || resolution == CONFIRMATION_DECLINE, OP_CODE_INVALID, "Invalid resolution");
         Confirmation conf = Confirmation(trId, user, resolution, now);
-        confirmations[trId].push(conf);
+        mConfirmations[trId].push(conf);
     }
 
 
@@ -274,43 +275,21 @@ contract FidoSafe {
     // Off-chain functions
     //---------------------------------
 
-    function getTransactions(uint128 sId) public view returns (Transaction[] trans) {
-        sId;
-        for ((, Transaction tr) : transactions) {
-        trans.push(tr);
+    function getTransactions() public view returns (Transaction[] transactions) {
+        for ((, Transaction tr) : mTransactions) {
+        transactions.push(tr);
         }
-    return trans;
+    return transactions;
     }
 
-    function getConfirmations(uint32 trId) public view returns (Confirmation[] confs) {
-        require(confirmations.exists(trId), OP_CODE_NOTFOUND);
-        Confirmation[] confarr = confirmations[trId];
+    function getConfirmations(uint32 trId) public view returns (Confirmation[] confirmations) {
+        require(mConfirmations.exists(trId), OP_CODE_NOTFOUND);
+        Confirmation[] confarr = mConfirmations[trId];
 
         for (Confirmation conf : confarr) {
-            confs.push(conf);
+            confirmations.push(conf);
         }
-        return confs;
-    }
-
-
-    function addUserMsg(uint256 pubkey, uint32 trId) public pure returns (TvmCell message) {
-        message;
-        return message;
-    }
-
-    function removeUserMsg(uint256 pubkey, uint32 trId) public pure returns (TvmCell message) {
-        message;
-        return message;
-    }
-
-    function resolveTransactionMsg(uint8 resolution, uint32 trId) public pure returns (TvmCell message) {
-        message;
-        return message;
-    }
-
-    function setRequiredConfirmations(uint8 confirmNum, uint32 trId) public pure returns (TvmCell message) {
-        message;
-        return message;
+        return confirmations;
     }
 
 

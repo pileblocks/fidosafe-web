@@ -1,12 +1,10 @@
 <template>
   <div class="home">
-    <h1>This is an home page</h1>
+    <h1>Please open /#/&lt;contract address&gt;</h1>
   </div>
 </template>
 
 <script>
-
-
 export default {
   name: 'Home',
   components: {
