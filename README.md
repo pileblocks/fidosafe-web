@@ -25,6 +25,11 @@ npm run serve
 cd contracts
 tondev sol compile fidosafe.sol
 tondev contract deploy fidosafe.sol --network se -v 100000000000
+
+tondev contract deploy fidosafeDebot.sol --network se -v 100000000000
+tonos-cli --url localhost call $DEBOT_ADDRESS setTodoCode "{\"code\":\"$todo_code\"}" \
+    --sign $DEBOT_NAME.keys.json \
+    --abi $DEBOT_NAME.abi.json
 ```
 
 ### (Optional) Update the ABI wrapper

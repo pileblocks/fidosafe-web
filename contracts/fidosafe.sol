@@ -4,15 +4,10 @@ pragma AbiHeader pubkey;
 
 contract FidoSafe {
 
-    uint32 version;
-
     struct User {
         uint256 pubkey;
         uint8 role;
     }
-
-    uint8 constant USER_ROLE_ADMIN = 1;
-
 
     struct Transaction {
         uint32 id;
@@ -24,15 +19,6 @@ contract FidoSafe {
         uint8 trType;
     }
 
-    uint8 constant TR_TYPE_ADD_USER = 1;
-    uint8 constant TR_TYPE_REMOVE_USER = 2;
-    uint8 constant TR_TYPE_CHANGE_CONFIRMS = 3;
-
-
-    uint8 constant TR_STATUS_CONFIRMED = 100;
-    uint8 constant TR_STATUS_DECLINED = 103;
-    uint8 constant TR_STATUS_IN_PROGRESS = 0;
-
     struct Confirmation {
         uint32 transactionId;
         User user;
@@ -40,20 +26,24 @@ contract FidoSafe {
         uint32 created;
     }
 
-    uint8 constant CONFIRMATION_ACCEPT = 1;
-    uint8 constant CONFIRMATION_DECLINE = 2;
-
-    // Number of confirmations necessary to approve an operation
-    uint8 requiredConfirmations;
-
-    // Safe ID
-    uint128 safeId;
-
     mapping(uint32 => Transaction) mTransactions;
 
     mapping(uint256 => User) mUsers;
 
     mapping(uint32 => Confirmation[]) mConfirmations;
+
+    uint8 constant USER_ROLE_ADMIN = 1;
+
+    uint8 constant TR_TYPE_ADD_USER = 1;
+    uint8 constant TR_TYPE_REMOVE_USER = 2;
+    uint8 constant TR_TYPE_CHANGE_CONFIRMS = 3;
+
+    uint8 constant TR_STATUS_CONFIRMED = 100;
+    uint8 constant TR_STATUS_DECLINED = 103;
+    uint8 constant TR_STATUS_IN_PROGRESS = 0;
+
+    uint8 constant CONFIRMATION_ACCEPT = 1;
+    uint8 constant CONFIRMATION_DECLINE = 2;
 
     uint constant OP_CODE_CONFLICT = 409;
     uint constant OP_CODE_INVALID = 400;
@@ -61,9 +51,16 @@ contract FidoSafe {
     uint constant OP_CODE_NOPUB = 401;
     uint constant OP_CODE_NOTFOUND = 404;
 
-    constructor() public {
-        version = 3;
-        uint256 pubkey = msg.pubkey();
+    // Allows to modify the code
+    uint32 version;
+
+    // Number of confirmations necessary to approve an operation
+    uint8 requiredConfirmations;
+
+    event UserCreated(string text, uint32 time);
+
+    constructor(uint256 pubkey) public {
+        version = 1_100_502;
         require(pubkey != 0, 120);
         tvm.accept();
         mUsers[pubkey] = User(pubkey, 1);
@@ -77,7 +74,7 @@ contract FidoSafe {
         _;
     }
 
-    function isInAdmins(uint256 pubkey) private returns (bool) {
+    function isInAdmins(uint256 pubkey) private view returns (bool) {
         if (mUsers.exists(pubkey) && mUsers[pubkey].role == USER_ROLE_ADMIN) {
             return true;
         }
@@ -85,16 +82,16 @@ contract FidoSafe {
     }
 
     //---------------------------------
-    // On-chain functions, service functions
+    // Service functions
     //---------------------------------
 
-    function genTransactionId() private returns (uint32) {
+    function genTransactionId() private pure returns (uint32) {
         rnd.shuffle();
         uint32 id = rnd.next(uint32(0xFFFFFFFF)) | 0xF0000000;
         return id;
     }
 
-    function isActiveTransaction(uint32 trId) private returns (bool) {
+    function isActiveTransaction(uint32 trId) private view returns (bool) {
         if (mTransactions.exists(trId)) {
             Transaction tr = mTransactions[trId];
             if (tr.status == TR_STATUS_IN_PROGRESS) {
@@ -110,7 +107,7 @@ contract FidoSafe {
         }
     }
 
-    function confExists(uint32 trId, User user, Confirmation[] confs) private returns (bool) {
+    function confExists(User user, Confirmation[] confs) private pure returns (bool) {
         for (Confirmation conf: confs) {
             if (conf.user.pubkey == user.pubkey) {
                 return true;
@@ -120,21 +117,31 @@ contract FidoSafe {
     }
 
     function addConfirmation(uint32 trId, User user) private {
-        if (!confExists(trId, user, mConfirmations[trId])) {
+        if (!confExists(user, mConfirmations[trId])) {
             Confirmation conf = Confirmation(trId, user, CONFIRMATION_ACCEPT, now);
             mConfirmations[trId].push(conf);
         }
     }
 
     //
-    //  Contract UX operations
+    // Parsers
     //
 
-    function addUserParser(uint32 trId) private returns (uint256 pubkey) {
+    function addUserParser(uint32 trId) private view returns (uint256 pubkey) {
         Transaction tr = mTransactions[trId];
         TvmSlice slice = tr.params.toSlice();
         return slice.decode(uint256);
     }
+
+    function changeConfirmationsParser(uint32 trId) private view returns (uint8 numConfirms) {
+        Transaction tr = mTransactions[trId];
+        TvmSlice slice = tr.params.toSlice();
+        return slice.decode(uint8);
+    }
+
+    //
+    //  Contract UX operations
+    //
 
     function addUser(uint256 pubkey, uint32 trId) onlyAdmin public {
         // Check if the user is already among the users
@@ -186,12 +193,6 @@ contract FidoSafe {
         }
     }
 
-    function changeConfirmationsParser(uint32 trId) private returns (uint8 numConfirms) {
-        Transaction tr = mTransactions[trId];
-        TvmSlice slice = tr.params.toSlice();
-        return slice.decode(uint8);
-    }
-
     function changeReqConfirmations(uint32 trId, uint8 newReqConfirmations) onlyAdmin public {
         Transaction tr;
         User user = mUsers[msg.pubkey()];
@@ -206,8 +207,7 @@ contract FidoSafe {
             // Check that the type of the transaction corresponds to addUser
             require(tr.trType == TR_TYPE_CHANGE_CONFIRMS, OP_CODE_CONFLICT, "The transaction type is from a different operation");
             require(changeConfirmationsParser(trId) == newReqConfirmations, OP_CODE_CONFLICT, "The transaction data is different to the requested operation data");
-        }
-        else {
+        } else {
             trId = genTransactionId();
             TvmBuilder params;
             params.store(newReqConfirmations);
@@ -236,7 +236,7 @@ contract FidoSafe {
     function resolveTransaction(uint32 trId, uint8 resolution) onlyAdmin public {
         require(isActiveTransaction(trId), OP_CODE_CONFLICT, "The transaction is not active or does not exist");
         User user = mUsers[msg.pubkey()];
-        require(!confExists(trId, user, mConfirmations[trId]), OP_CODE_CONFLICT, "You have already provided the resolution");
+        require(!confExists(user, mConfirmations[trId]), OP_CODE_CONFLICT, "You have already provided the resolution");
         require(resolution == CONFIRMATION_ACCEPT || resolution == CONFIRMATION_DECLINE, OP_CODE_INVALID, "Invalid resolution");
         Confirmation conf = Confirmation(trId, user, resolution, now);
         mConfirmations[trId].push(conf);
@@ -247,14 +247,14 @@ contract FidoSafe {
     // Off-chain functions
     //---------------------------------
 
-    function getUsers() public returns (User[] users) {
-        for ((uint256 pubkey, User user) : mUsers) {
+    function getUsers() public view returns (User[] users) {
+        for ((, User user): mUsers) {
             users.push(user);
         }
     }
 
     function getTransactions() public view returns (Transaction[] transactions) {
-        for ((, Transaction tr) : mTransactions) {
+        for ((, Transaction tr): mTransactions) {
             transactions.push(tr);
         }
     }
@@ -263,24 +263,23 @@ contract FidoSafe {
         require(mConfirmations.exists(trId), OP_CODE_NOTFOUND);
         Confirmation[] confarr = mConfirmations[trId];
 
-        for (Confirmation conf : confarr) {
+        for (Confirmation conf: confarr) {
             confirmations.push(conf);
         }
         return confirmations;
     }
 
-    function getNumConfirmations(uint32 trId) public returns (uint8 accepted, uint8 declined) {
+    function getNumConfirmations(uint32 trId) public view returns (uint8 accepted, uint8 declined) {
 
         accepted = 0;
         declined = 0;
 
         if (mConfirmations.exists(trId)) {
             Confirmation[] confs = mConfirmations[trId];
-            for (Confirmation conf : confs) {
+            for (Confirmation conf: confs) {
                 if (conf.resolution == CONFIRMATION_ACCEPT) {
                     accepted += 1;
-                }
-                else if (conf.resolution == CONFIRMATION_DECLINE) {
+                } else if (conf.resolution == CONFIRMATION_DECLINE) {
                     declined += 1;
                 }
             }

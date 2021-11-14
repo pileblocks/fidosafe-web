@@ -1,0 +1,24 @@
+$primary: #345B63;
+$secondary: #FEFBF3;
+$navbar-dark-color: rgba(255,255,255, 0.9);
+$navbar-nav-link-padding-x: 1.5rem;
+$btn-border-color: #DFD8CA;
+$success: #105652;
+$danger: #B91646;
+
+
+// Include Bootstrap and BootstrapVue SCSS files
+@import '~bootstrap/scss/bootstrap.scss';
+@import '~bootstrap-vue/src/index.scss';
+
+.btn-secondary {
+  border-width: 1px;
+  border-color: $btn-border-color;
+}
+
+.btn-confirm {
+    color: $success;
+}
+.btn-reject {
+    color: $danger;
+}

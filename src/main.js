@@ -2,8 +2,10 @@ import Vue from 'vue'
 import App from './App.vue'
 
 import { BootstrapVue, IconsPlugin, ToastPlugin } from 'bootstrap-vue'
-import 'bootstrap/dist/css/bootstrap.css'
-import 'bootstrap-vue/dist/bootstrap-vue.css'
+import './theme.scss'
+import 'bootstrap-icons/font/bootstrap-icons.scss'
+//import 'bootstrap/dist/css/bootstrap.css'
+//import 'bootstrap-vue/dist/bootstrap-vue.css'
 
 import router from './router'
 import store from './store'
@@ -20,15 +22,7 @@ import { TonClient } from '@tonclient/core';
 import { libWeb } from '@tonclient/lib-web';
 
 TonClient.useBinaryLibrary(libWeb);
-
-TonClient.defaultConfig = {
-    network: {
-        // Local node URL here
-        endpoints: ['http://localhost']
-    },
-};
-
-
+console.log("Network:" + process.env.VUE_APP_EVERSCALE_URL);
 
 new Vue({
   router,
