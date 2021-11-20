@@ -5,14 +5,19 @@ export const Safe: {
                 state: {
                     address: string,
                     api: SafeContractApi,
-                    users: Array<FidoUser>
+                    users: Array<FidoUser>,
+                    users: Array<FidoTransaction>,
+                    requiredConfirmations: Number,
+                    numberOfUsers: Number
                 }
                 } = {
     namespaced: true,
     state: {
-        address: "",
         api: null,
-        users: []
+        users: [],
+        transactions: [],
+        requiredConfirmations: 1,
+        numberOfUsers: 1
     },
     mutations: {
         changeApi(state: Object, api: SafeContractApi) {
@@ -23,13 +28,18 @@ export const Safe: {
         },
         getTransactions(state: Object, transactions: Array<FidoTransaction>) {
             state.transactions = transactions;
+        },
+        getRequiredConfirmations(state: Object, requiredConfirmations: Number) {
+            state.requiredConfirmations = requiredConfirmations;
+        },
+        getNumberOfUsers(state: Object, numberOfUsers: Number) {
+            state.numberOfUsers = numberOfUsers;
         }
     },
     actions: {
-        changeAddress({commit, dispatch}, address) {
-            commit('changeApi', new SafeContractApi(address));
-            dispatch('getUsers');
-            dispatch('getTransactions');
+        initSafe({commit, dispatch, state}, {address, client, vue}) {
+            if (state.api == null)
+                commit('changeApi', new SafeContractApi(address, client, vue));
         },
 
         async getUsers({ commit, state }): void {
@@ -39,6 +49,14 @@ export const Safe: {
         async getTransactions({ commit, state }): void {
             let transactions = await state.api.getTransactions();
             commit('getTransactions', transactions);
+        },
+        async getRequiredConfirmations({ commit, state }): void {
+            let reqConfirmations = await state.api.getRequiredConfirmations();
+            commit('getRequiredConfirmations', reqConfirmations);
+        },
+        async getNumberOfUsers({ commit, state }): void {
+            let numberOfUsers = await state.api.getNumberOfUsers();
+            commit('getNumberOfUsers', numberOfUsers);
         }
     },
 

@@ -2,7 +2,7 @@ pragma ton -solidity >= 0.43.0;
 pragma AbiHeader expire;
 pragma AbiHeader pubkey;
 
-contract FidoSafe {
+contract Fidosafe {
 
     struct User {
         uint256 pubkey;
@@ -60,7 +60,7 @@ contract FidoSafe {
     event UserCreated(string text, uint32 time);
 
     constructor(uint256 pubkey) public {
-        version = 1_100_502;
+        version = 1_100_504;
         require(pubkey != 0, 120);
         tvm.accept();
         mUsers[pubkey] = User(pubkey, 1);
@@ -70,7 +70,6 @@ contract FidoSafe {
     modifier onlyAdmin() {
         require(msg.pubkey() != 0, OP_CODE_NOPUB);
         require(isInAdmins(msg.pubkey()), OP_CODE_UNAUTH);
-        tvm.accept();
         _;
     }
 
@@ -143,7 +142,8 @@ contract FidoSafe {
     //  Contract UX operations
     //
 
-    function addUser(uint256 pubkey, uint32 trId) onlyAdmin public {
+    function addUser(uint32 trId, uint256 pubkey) onlyAdmin public {
+        tvm.accept();
         // Check if the user is already among the users
         require(!mUsers.exists(pubkey), OP_CODE_CONFLICT, "User already exists");
 
@@ -185,7 +185,7 @@ contract FidoSafe {
         mTransactions[trId] = tr;
     }
 
-    function removeUser(uint256 pubkey, uint32 trId) onlyAdmin public {
+    function removeUser(uint32 trId, uint256 pubkey) onlyAdmin public {
         // TODO: if req confirmations more than the remaining users => dec the conf number
         tvm.accept();
         if (mUsers.exists(pubkey)) {
@@ -194,6 +194,7 @@ contract FidoSafe {
     }
 
     function changeReqConfirmations(uint32 trId, uint8 newReqConfirmations) onlyAdmin public {
+        tvm.accept();
         Transaction tr;
         User user = mUsers[msg.pubkey()];
         uint8 numUsers = uint8(getUsers().length);
@@ -234,6 +235,7 @@ contract FidoSafe {
     }
 
     function resolveTransaction(uint32 trId, uint8 resolution) onlyAdmin public {
+        tvm.accept();
         require(isActiveTransaction(trId), OP_CODE_CONFLICT, "The transaction is not active or does not exist");
         User user = mUsers[msg.pubkey()];
         require(!confExists(user, mConfirmations[trId]), OP_CODE_CONFLICT, "You have already provided the resolution");
@@ -285,6 +287,14 @@ contract FidoSafe {
             }
         }
         return (accepted, declined);
+    }
+
+    function getRequiredConfirmations() public view returns (uint8 rc) {
+        return requiredConfirmations;
+    }
+
+    function getNumberOfUsers() public view returns (uint8 numberOfUsers) {
+        return uint8(getUsers().length);
     }
 
 }

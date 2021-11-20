@@ -3,12 +3,12 @@
   <section id="app">
     <b-navbar toggleable="lg" type="dark" variant="primary" fixed="top">
       <b-navbar-toggle target="nav-collapse"></b-navbar-toggle>
-      <b-navbar-brand href="#">FidoSafe <i class="safe-version-label">1.0.1</i></b-navbar-brand>
+      <b-navbar-brand href="/#/">Fidosafe <i class="safe-version-label">1.0.1</i></b-navbar-brand>
         <b-collapse id="nav-collapse" is-nav>
           <b-navbar-nav>
-            <b-nav-item href="#"><i class="bi bi-arrow-left-right"></i> Transactions</b-nav-item>
-            <b-nav-item href="#"><i class="bi bi-people-fill"></i> Users</b-nav-item>
-            <b-nav-item href="#"><i class="bi bi-sliders"></i> Settings</b-nav-item>
+            <b-nav-item href="#" v-bind:disabled="true"><i class="bi bi-arrow-left-right"></i>Transactions</b-nav-item>
+            <b-nav-item :to="{ name: 'Users', params: { safeAddress: safeAddress } }" v-bind:disabled="!safeAddress" active-class="nav-item-active"><i class="bi bi-people-fill"></i> Users</b-nav-item>
+            <b-nav-item :to="{ name: 'Settings', params: { safeAddress: safeAddress } }" v-bind:disabled="!safeAddress"><i class="bi bi-sliders"></i> Settings</b-nav-item>
           </b-navbar-nav>
         </b-collapse>
     </b-navbar>
@@ -61,14 +61,26 @@
   font-size: 0.5em;
   opacity: 0.5;
 }
+.nav-item > .router-link-exact-active {
+    color: var(--yellow) !important;
+    font-weight: bold;
+}
 
 path {
     fill: var(--primary);
+}
+.pubkey-wrap {
+    overflow-wrap: break-word;
 }
 </style>
 <script>
   import ConfirmOperation from "./components/ConfirmOperation";
   export default {
-    components: { ConfirmOperation }
+    components: { ConfirmOperation },
+    computed: {
+      safeAddress: function() {
+        return this.$store.state.Safe.api?.account?.address || null;
+      }
+    }
   }
 </script>

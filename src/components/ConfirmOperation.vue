@@ -1,5 +1,5 @@
 <template>
-    <div class="overlay" v-show="isVisible">
+    <div class="overlay" v-show="$store.state.Confirmation.isVisible">
         <div class="d-flex vh-100 justify-content-center align-items-center flex-column">
             <h2>{{ title }}
             </h2>
@@ -7,7 +7,7 @@
             </p>
             <div v-html="qrImage" class="qr-code"></div>
             <p>Alternatively, use this <a v-bind:href="url" target="_blank">LINK</a></p>
-            <div v-on:click="isVisible=false" class="confirmation-close"><i class="bi bi-x"></i>
+            <div v-on:click="hide()" class="confirmation-close"><i class="bi bi-x"></i>
             </div>
         </div>
     </div>
@@ -41,13 +41,16 @@ export default {
     },
     methods: {
         showConfirmation() {
-            let typeNumber = 8;
-            let errorCorrectionLevel = 'M';
+            let typeNumber = 14;
+            let errorCorrectionLevel = 'L';
             let qr = qrcode(typeNumber, errorCorrectionLevel);
             qr.addData(this.url);
             qr.make();
             this.qrImage = qr.createSvgTag({scalable: true});
-            this.isVisible = true;
+            this.$store.commit('Confirmation/toggleVisible', true);
+        },
+        hide() {
+            this.$store.commit('Confirmation/toggleVisible', false);
         }
     }
 }

@@ -1,9 +1,16 @@
 <template>
 
 <b-container class="section-panel" fluid="lg">
-    <h1 class="pt-5 pb-4">Users</h1>
+
+    <div class="d-flex justify-content-between">
+      <h1 class="pt-5 pb-4">Users</h1>
+      <div class="d-flex align-items-center">
+          <b-button variant="primary" size="lg" type="submit" :to="{ name: 'AddUser', params: { safeAddress: this.$route.params.safeAddress } }" v-bind:disabled="!this.$route.params.safeAddress"><i class="bi bi-plus-lg"></i> Add</b-button>
+      </div>
+    </div>
+
     <b-row v-for="user in userList" :key="user.pubkey" class="mb-2">
-        <b-col sm="7" class="pubkey-col">{{ user.pubkey }}</b-col>
+        <b-col sm="7" class="pubkey-wrap">{{ user.pubkey }}</b-col>
         <b-col sm="1">{{ user.role }}</b-col>
         <b-col sm="4">
             <b-button class="btn-reject"><i class="bi bi-x-lg"></i>
@@ -33,7 +40,8 @@ export default {
         }
     },
     mounted() {
-        this.$store.dispatch('Safe/changeAddress', this.$route.params.safeName);
+        this.$store.dispatch('Safe/initSafe', {address: this.$route.params.safeAddress, client: this.everscale, vue: this});
+        this.$store.dispatch('Safe/getUsers');
     },
     computed: {
         userList: function () {
@@ -44,7 +52,4 @@ export default {
 </script>
 
 <style lang="less" scoped>
-.pubkey-col {
-    overflow-wrap: break-word;
-}
 </style>

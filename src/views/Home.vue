@@ -2,7 +2,7 @@
   <b-container>
     <b-row>
       <b-col class="mt-5">
-        <h1>Create a FidoSafe</h1>
+        <h1>Create a Fidosafe</h1>
         <p class="lead mt-3">
         We'll transfer you to our DeBot to create a safe. Once the safe is complete, you will navigate back to the website to further manage your safe.
         </p>
@@ -32,8 +32,7 @@ export default {
     name: 'Home',
         methods: {
             createSafe() {
-              let debotApi = new DebotContractApi("0:f4672dbb7d5074a9b6cc81a55b91fdc31da0450517fed3ddbcc11cd6c3879614");
-              this.$store.commit('Confirmation/sendConfrimation', debotApi.getCreateSafeData())
+              this.$store.commit('Confirmation/sendConfrimation', DebotContractApi.getCreateSafeData(this.debotAccount.address));
             }
         },
     components: {

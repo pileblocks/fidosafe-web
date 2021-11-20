@@ -3,7 +3,8 @@ export const Confirmation: {
         confirmationTimestamp: number,
         confirmationUrl: string,
         confirmationTitle: string,
-        confirmationDescription: string
+        confirmationDescription: string,
+        isVisible: boolean
     }
     } = {
     namespaced: true,
@@ -11,7 +12,8 @@ export const Confirmation: {
         confirmationTimestamp: 0,
         confirmationUrl: '',
         confirmationTitle: '',
-        confirmationDescription: ''
+        confirmationDescription: '',
+        isVisible: false
     },
     mutations: {
         sendConfrimation(state: Object, confirmObj: {url: string, title: string, description: string}) {
@@ -19,6 +21,9 @@ export const Confirmation: {
             state.confirmationTitle = confirmObj.title;
             state.confirmationDescription = confirmObj.description;
             state.confirmationUrl = confirmObj.url;
+        },
+        toggleVisible(state: Object, isVisible: boolean) {
+            state.isVisible = isVisible;
         }
 
     },
