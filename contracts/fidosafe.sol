@@ -20,7 +20,8 @@ contract Fidosafe {
     }
 
     struct Confirmation {
-        uint32 transactionId;
+        uint32 trId;
+        uint32 id;
         User user;
         uint8 resolution;
         uint32 created;
@@ -60,7 +61,7 @@ contract Fidosafe {
     event UserCreated(string text, uint32 time);
 
     constructor(uint256 pubkey) public {
-        version = 1_100_504;
+        version = 1_100_505;
         require(pubkey != 0, 120);
         tvm.accept();
         mUsers[pubkey] = User(pubkey, 1);
@@ -116,8 +117,9 @@ contract Fidosafe {
     }
 
     function addConfirmation(uint32 trId, User user) private {
+        uint32 confId = genTransactionId();
         if (!confExists(user, mConfirmations[trId])) {
-            Confirmation conf = Confirmation(trId, user, CONFIRMATION_ACCEPT, now);
+            Confirmation conf = Confirmation(trId, confId, user, CONFIRMATION_ACCEPT, now);
             mConfirmations[trId].push(conf);
         }
     }
@@ -144,6 +146,7 @@ contract Fidosafe {
 
     function addUser(uint32 trId, uint256 pubkey) onlyAdmin public {
         tvm.accept();
+        emit UserCreated("🍗", now);
         // Check if the user is already among the users
         require(!mUsers.exists(pubkey), OP_CODE_CONFLICT, "User already exists");
 
@@ -240,7 +243,8 @@ contract Fidosafe {
         User user = mUsers[msg.pubkey()];
         require(!confExists(user, mConfirmations[trId]), OP_CODE_CONFLICT, "You have already provided the resolution");
         require(resolution == CONFIRMATION_ACCEPT || resolution == CONFIRMATION_DECLINE, OP_CODE_INVALID, "Invalid resolution");
-        Confirmation conf = Confirmation(trId, user, resolution, now);
+        uint32 confId = genTransactionId();
+        Confirmation conf = Confirmation(trId, confId, user, resolution, now);
         mConfirmations[trId].push(conf);
     }
 

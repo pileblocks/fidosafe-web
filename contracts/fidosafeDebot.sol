@@ -15,6 +15,7 @@ interface SafeAccount {
 interface Fidosafe {
     function addUser(uint32 trId, uint256 pubkey) external;
     function changeReqConfirmations(uint32 trId, uint8 newReqConfirmations) external;
+    function resolveTransaction(uint32 trId, uint8 resolution) external;
 }
 
 abstract contract Fsafe {
@@ -49,7 +50,7 @@ contract FidosafeDebot is Debot {
         address support, string hello, string language, string dabi, bytes icon
     ) {
         name = "Fidosafe Create & Confirm";
-        version = "0.4.9";
+        version = "0.5.0";
         publisher = "Norton";
         key = "Use this bot to create a new Fidosafe in 3 easy steps:\n\n① You fund a new contract address.\n\n② We deploy to this address.\n\n③ You receive the web link and start working with your contract.\n\nFor more information, see https://fidosafe.com";
         author = "Norton";
@@ -191,15 +192,15 @@ contract FidosafeDebot is Debot {
         return msg;
     }
 
-    function getAddUserData(address fsAddress, uint256 uPubkey) public view returns(TvmCell data) {
-        TvmCell body = tvm.encodeBody(FidosafeDebot.addUser, fsAddress, uPubkey);
+    function getAddUserData(address fsAddress, uint32 trId, uint256 uPubkey) public view returns(TvmCell data) {
+        TvmCell body = tvm.encodeBody(FidosafeDebot.addUser, fsAddress, trId, uPubkey);
         TvmBuilder msgData;
         msgData = addHeaders(msgData);
         msgData.store(body);
         data = msgData.toCell();
     }
 
-    function addUser(address fsAddress, uint256 uPubkey) public {
+    function addUser(address fsAddress, uint32 trId, uint256 uPubkey) public {
         Terminal.print(0, format("Add new user: {}", uPubkey));
         Fidosafe(fsAddress).addUser{
             abiVer: 2,
@@ -210,18 +211,18 @@ contract FidosafeDebot is Debot {
             expire: 0,
             callbackId: tvm.functionId(reInit),
             onErrorId: tvm.functionId(printError)  // Just repeat if something went wrong
-        }(0, uPubkey);
+        }(trId, uPubkey);
     }
 
-    function getChangeReqConfirmationsData(address fsAddress, uint8 newReqConfirmations) public view returns(TvmCell data) {
-        TvmCell body = tvm.encodeBody(FidosafeDebot.changeReqConfirmations, fsAddress, newReqConfirmations);
+    function getChangeReqConfirmationsData(address fsAddress, uint32 trId, uint8 newReqConfirmations) public view returns(TvmCell data) {
+        TvmCell body = tvm.encodeBody(FidosafeDebot.changeReqConfirmations, fsAddress, trId, newReqConfirmations);
         TvmBuilder msgData;
         msgData = addHeaders(msgData);
         msgData.store(body);
         data = msgData.toCell();
     }
 
-    function changeReqConfirmations(address fsAddress, uint8 newReqConfirmations) public {
+    function changeReqConfirmations(address fsAddress, uint32 trId, uint8 newReqConfirmations) public {
         Terminal.print(0, format("Change confirmations to: {}", newReqConfirmations));
         Fidosafe(fsAddress).changeReqConfirmations{
             abiVer: 2,
@@ -232,7 +233,29 @@ contract FidosafeDebot is Debot {
             expire: 0,
             callbackId: tvm.functionId(reInit),
             onErrorId: tvm.functionId(printError)  // Just repeat if something went wrong
-        }(0, newReqConfirmations);
+        }(trId, newReqConfirmations);
+    }
+
+    function getResolveTransactionData(address fsAddress, uint32 trId, uint8 resolution) public view returns(TvmCell data) {
+        TvmCell body = tvm.encodeBody(FidosafeDebot.resolveTransaction, fsAddress, trId, resolution);
+        TvmBuilder msgData;
+        msgData = addHeaders(msgData);
+        msgData.store(body);
+        data = msgData.toCell();
+    }
+
+    function resolveTransaction(address fsAddress, uint32 trId, uint8 resolution) public {
+        Terminal.print(0, format("Resolution: {}", resolution));
+        Fidosafe(fsAddress).resolveTransaction{
+            abiVer: 2,
+            extMsg: true,
+            sign: true,
+            pubkey: userPubkey,
+            time: uint64(now),
+            expire: 0,
+            callbackId: tvm.functionId(reInit),
+            onErrorId: tvm.functionId(printError)  // Just repeat if something went wrong
+        }(trId, resolution);
     }
 
 }

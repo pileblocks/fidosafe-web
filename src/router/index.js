@@ -4,6 +4,7 @@ import Users from '../views/Users'
 import Home from '../views/Home'
 import Settings from '../views/Settings'
 import AddUser from '../views/AddUser'
+import Transactions from '../views/Transactions'
 
 Vue.use(VueRouter);
 
@@ -17,6 +18,11 @@ const routes = [
       path: '/:safeAddress/users',
       name: 'Users',
       component: Users
+  },
+  {
+      path: '/:safeAddress/transactions',
+      name: 'Transactions',
+      component: Transactions
   },
   {
       path: '/:safeAddress/settings',

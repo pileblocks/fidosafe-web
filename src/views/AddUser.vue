@@ -41,7 +41,7 @@ export default {
     },
     methods: {
       async addUser() {
-        let confirmObj = await DebotContractApi.getAddUserData(this.debotAccount, this.$route.params.safeAddress, this.newUserAddress);
+        let confirmObj = await DebotContractApi.getAddUserData(this.debotAccount, this.$route.params.safeAddress, 0, this.newUserAddress);
         this.$store.commit('Confirmation/sendConfrimation', confirmObj);
       },
     }

@@ -1,8 +1,8 @@
 <template>
   <b-container class="section-panel" fluid="lg">
     <b-row>
-      <b-col class="mt-5">
-        <h1 class="pb-4">Settings</h1>
+      <b-col>
+        <h1 class="pb-4 pt-4 mb-0">Settings</h1>
         <b-form>
           <b-form-group
             label="Required number of confirmations:"
@@ -14,7 +14,7 @@
             <div>Current value: {{ confirmationsNum }}</div>
           </b-form-group>
             <div class="d-flex justify-content-end">
-                <b-button variant="primary" size="lg" type="button" v-on:click="save()">Save</b-button>
+                <b-button variant="primary" type="button" v-on:click="save()">Save</b-button>
             </div>
         </b-form>
       </b-col>
@@ -55,7 +55,7 @@ export default {
     methods: {
         async save() {
           if (this.confirmationsNum !== this.requiredConfirmations) {
-            let confirmObj = await DebotContractApi.getChangeReqConfirmationsData(this.debotAccount, this.$route.params.safeAddress, this.confirmationsNum);
+            let confirmObj = await DebotContractApi.getChangeReqConfirmationsData(this.debotAccount, this.$route.params.safeAddress, 0, this.confirmationsNum);
             this.$store.commit('Confirmation/sendConfrimation', confirmObj);
           }
         }

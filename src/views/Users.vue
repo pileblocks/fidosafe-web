@@ -3,9 +3,9 @@
 <b-container class="section-panel" fluid="lg">
 
     <div class="d-flex justify-content-between">
-      <h1 class="pt-5 pb-4">Users</h1>
+      <h1 class="pt-4 pb-4 mb-0">Users</h1>
       <div class="d-flex align-items-center">
-          <b-button variant="primary" size="lg" type="submit" :to="{ name: 'AddUser', params: { safeAddress: this.$route.params.safeAddress } }" v-bind:disabled="!this.$route.params.safeAddress"><i class="bi bi-plus-lg"></i> Add</b-button>
+          <b-button variant="primary" type="submit" :to="{ name: 'AddUser', params: { safeAddress: this.$route.params.safeAddress } }" v-bind:disabled="!this.$route.params.safeAddress"><i class="bi bi-plus-lg"></i> Add</b-button>
       </div>
     </div>
 
@@ -42,6 +42,7 @@ export default {
     mounted() {
         this.$store.dispatch('Safe/initSafe', {address: this.$route.params.safeAddress, client: this.everscale, vue: this});
         this.$store.dispatch('Safe/getUsers');
+        this.$store.dispatch('Safe/getTransactions');
     },
     computed: {
         userList: function () {

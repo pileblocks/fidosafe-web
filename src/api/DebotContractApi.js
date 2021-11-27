@@ -1,4 +1,5 @@
 import { Account } from "@tonclient/appkit";
+import { RESOLUTION_CONFIRM } from "../data/AppTypes";
 
 type ConfirmationMsg = {
     url: string,
@@ -24,8 +25,8 @@ export class DebotContractApi {
         };
     }
 
-    static async getAddUserData(debotAccount: Account, safeAddress: string, newUserAddress: string): ConfirmationMsg {
-        let out = await debotAccount.runLocal("getAddUserData", {fsAddress: safeAddress, uPubkey: newUserAddress});
+    static async getAddUserData(debotAccount: Account, safeAddress: string, trId: number, newUserAddress: string): ConfirmationMsg {
+        let out = await debotAccount.runLocal("getAddUserData", {fsAddress: safeAddress, trId: trId, uPubkey: newUserAddress});
         let pk = DebotContractApi.shrinkPubkey(newUserAddress);
         return {
            url: `https://uri.ton.surf/debot?net=devnet&address=${debotAccount.address}&message=${out.decoded.output.data}`,
@@ -35,12 +36,23 @@ export class DebotContractApi {
 
     }
 
-    static async getChangeReqConfirmationsData(debotAccount: Account, safeAddress: string, newReqConfirmations: number): ConfirmationMsg {
-        let out = await debotAccount.runLocal("getChangeReqConfirmationsData", {fsAddress: safeAddress, newReqConfirmations: newReqConfirmations});
+    static async getChangeReqConfirmationsData(debotAccount: Account, safeAddress: string, trId: number, newReqConfirmations: number): ConfirmationMsg {
+        let out = await debotAccount.runLocal("getChangeReqConfirmationsData", {fsAddress: safeAddress, trId: trId, newReqConfirmations: newReqConfirmations});
         return {
            url: `https://uri.ton.surf/debot?net=devnet&address=${debotAccount.address}&message=${out.decoded.output.data}`,
            title: "Change the Number of Confirmations",
            description: `Change the number of confirmations to: ${newReqConfirmations}`
+        };
+
+    }
+
+    static async getResolveTransactionData(debotAccount: Account, safeAddress: string, trId: number, resolution: number): ConfirmationMsg {
+        let out = await debotAccount.runLocal("getResolveTransactionData", {fsAddress: safeAddress, trId: trId, resolution: resolution});
+        let title = resolution === RESOLUTION_CONFIRM ? "Confirm the transaction" : "Reject the transaction";
+        return {
+           url: `https://uri.ton.surf/debot?net=devnet&address=${debotAccount.address}&message=${out.decoded.output.data}`,
+           title: title,
+           description: `Scan the QR code to either confirm or decline the transaction`
         };
 
     }
