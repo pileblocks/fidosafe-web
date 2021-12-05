@@ -3,7 +3,7 @@
   <section id="app">
     <b-navbar toggleable="lg" type="dark" variant="primary" fixed="top">
       <b-navbar-toggle target="nav-collapse"></b-navbar-toggle>
-      <b-navbar-brand href="/#/">Fidosafe <i class="safe-version-label">1.0.1</i></b-navbar-brand>
+      <b-navbar-brand href="/#/">Fidosafe <i class="safe-version-label">1.0.6</i></b-navbar-brand>
         <b-collapse id="nav-collapse" is-nav>
           <b-navbar-nav>
             <b-nav-item :to="{ name: 'Transactions', params: { safeAddress: safeAddress } }" v-bind:disabled="!safeAddress"><i class="bi bi-arrow-left-right"></i>Transactions</b-nav-item>

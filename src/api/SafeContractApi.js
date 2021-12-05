@@ -33,8 +33,6 @@ export class SafeContractApi {
 
         this.vue = vue;
 
-        //this.vue.everscale.abi.decode_boc({params: [{name:"params", type:"uint256"}], boc:'te6ccgEBAQEAIgAAQJrpVI2gaJa3ihfpdnd5nh4ZKQXKp15SqBGvzJ+/yAAA', allow_partial: true}).then((data)=>{console.log(data)})
-        this.vue.everscale.abi.decode_boc({params: [{name:"params", type:"uint8"}], boc:'te6ccgEBAQEAAwAAAgI=', allow_partial: true}).then((data)=>{console.log(data)})
         this.account.subscribeMessages("boc", async (msg) => {
             const decoded:DecodedMessage = await this.account.decodeMessage(msg.boc);
             this.subMessagesProcessor(decoded);
@@ -60,6 +58,9 @@ export class SafeContractApi {
                 else if (decoded.name === "resolveTransaction") {
                     this.resolveTransactionProcessor(decoded.value);
                 }
+                else if (decoded.name === "removeUser") {
+                    this.removeUserProcessor(decoded.value);
+                }
                 this.vue.$store.commit('Confirmation/toggleVisible', false);
                 break;
         }
@@ -81,9 +82,13 @@ export class SafeContractApi {
     }
 
     addUserProcessor(message: {pubkey: string, trId: number})  {
+
         let notification = {linkText: 'Go to Transactions', message: `Request: Add a user with the public key ${message.pubkey}`};
         this.vue.$store.dispatch('Safe/getUsers');
         this.vue.$store.dispatch('Safe/getTransactions');
+        message.trId = parseInt(message.trId);
+        if (message.trId > 0)
+            this.vue.$store.dispatch('Safe/getNumConfirmations', message.trId);
         let msg = this._genMessgeContent(notification.message,
                                  { to: { name: 'Transactions', params: { safeAddress: this.account.address }}},
                                         notification.linkText);
@@ -94,6 +99,9 @@ export class SafeContractApi {
         this.vue.$store.dispatch('Safe/getTransactions');
         let notification = {linkText: 'Go to Transactions', message: `Request: Change # of confirmations to: ${message.newReqConfirmations}`};
         this.vue.$store.dispatch('Safe/getRequiredConfirmations');
+        message.trId = parseInt(message.trId);
+        if (message.trId > 0)
+            this.vue.$store.dispatch('Safe/getNumConfirmations', message.trId);
         let msg = this._genMessgeContent(notification.message,
                                  { to: { name: 'Transactions', params: { safeAddress: this.account.address }}},
                                         notification.linkText);
@@ -104,6 +112,7 @@ export class SafeContractApi {
          message.trId = parseInt(message.trId);
          message.resolution = parseInt(message.resolution);
          this.vue.$store.dispatch('Safe/getTransactions');
+         message.trId = parseInt(message.trId);
          if (message.trId > 0)
             this.vue.$store.dispatch('Safe/getNumConfirmations', message.trId);
          let res:string = (message.resolution === RESOLUTION_CONFIRM) ? "APPROVE" : "REJECT";
@@ -113,6 +122,19 @@ export class SafeContractApi {
                                         notification.linkText);
         this.vue.$root.$bvToast.toast([msg], { appendToast: true, noCloseButton: false, autoHideDelay: 10000, solid: true});
 
+    }
+
+    removeUserProcessor(message: {pubkey: string, trId: number})  {
+        let notification = {linkText: 'Go to Transactions', message: `Request: Remove a user with the public key ${message.pubkey}`};
+        this.vue.$store.dispatch('Safe/getUsers');
+        this.vue.$store.dispatch('Safe/getTransactions');
+        message.trId = parseInt(message.trId);
+        if (message.trId > 0)
+            this.vue.$store.dispatch('Safe/getNumConfirmations', message.trId);
+        let msg = this._genMessgeContent(notification.message,
+                                 { to: { name: 'Transactions', params: { safeAddress: this.account.address }}},
+                                        notification.linkText);
+        this.vue.$root.$bvToast.toast([msg], { appendToast: true, noCloseButton: false, autoHideDelay: 10000, solid: true});
     }
 
     //

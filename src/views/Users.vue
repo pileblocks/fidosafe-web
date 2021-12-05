@@ -13,9 +13,7 @@
         <b-col sm="7" class="pubkey-wrap">{{ user.pubkey }}</b-col>
         <b-col sm="1">{{ user.role }}</b-col>
         <b-col sm="4">
-            <b-button class="btn-reject"><i class="bi bi-x-lg"></i>
-            </b-button>
-            <b-button class="btn-confirm ml-2"><i class="bi bi-check-lg"></i>
+            <b-button class="btn-reject"><i class="bi bi-x-lg" v-on:click="removeUser(user.pubkey)"></i>
             </b-button>
         </b-col>
     </b-row>
@@ -30,6 +28,7 @@ import {
     BCol,
     BButton,
 } from 'bootstrap-vue';
+import { DebotContractApi } from "../api/DebotContractApi";
 
 export default {
     name: "TransactionList",
@@ -48,6 +47,12 @@ export default {
         userList: function () {
             return this.$store.state.Safe.users;
         }
+    },
+    methods: {
+      async removeUser(removeUserPubkey:string) {
+        let confirmObj = await DebotContractApi.getRemoveUserData(this.debotAccount, this.$route.params.safeAddress, 0, removeUserPubkey);
+        this.$store.commit('Confirmation/sendConfrimation', confirmObj);
+      },
     }
 }
 </script>

@@ -14,6 +14,7 @@ interface SafeAccount {
 
 interface Fidosafe {
     function addUser(uint32 trId, uint256 pubkey) external;
+    function removeUser(uint32 trId, uint256 pubkey) external;
     function changeReqConfirmations(uint32 trId, uint8 newReqConfirmations) external;
     function resolveTransaction(uint32 trId, uint8 resolution) external;
 }
@@ -258,4 +259,25 @@ contract FidosafeDebot is Debot {
         }(trId, resolution);
     }
 
+    function getRemoveUserData(address fsAddress, uint32 trId, uint256 uPubkey) public view returns(TvmCell data) {
+        TvmCell body = tvm.encodeBody(FidosafeDebot.removeUser, fsAddress, trId, uPubkey);
+        TvmBuilder msgData;
+        msgData = addHeaders(msgData);
+        msgData.store(body);
+        data = msgData.toCell();
+    }
+
+    function removeUser(address fsAddress, uint32 trId, uint256 uPubkey) public {
+        Terminal.print(0, format("Remove user: {}", uPubkey));
+        Fidosafe(fsAddress).removeUser{
+            abiVer: 2,
+            extMsg: true,
+            sign: true,
+            pubkey: userPubkey,
+            time: uint64(now),
+            expire: 0,
+            callbackId: tvm.functionId(reInit),
+            onErrorId: tvm.functionId(printError)  // Just repeat if something went wrong
+        }(trId, uPubkey);
+    }
 }

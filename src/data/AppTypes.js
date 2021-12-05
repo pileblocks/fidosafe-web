@@ -35,5 +35,9 @@ export const TR_TYPE_ADD_USER = 1;
 export const TR_TYPE_REMOVE_USER = 2;
 export const TR_TYPE_CHANGE_CONFIRMS = 3;
 
+export const TR_STATUS_COMPLETED = 100;
+export const TR_STATUS_INPROGRESS = 0;
+
 export const TR_ADD_USER_PARAMS = {name:"pubkey", type:"uint256"}
 export const TR_CHANGE_CONFIRMS_PARAMS = {name:"confirmations", type:"uint8"}
+export const TR_REMOVE_USER_PARAMS = {name:"pubkey", type:"uint256"}

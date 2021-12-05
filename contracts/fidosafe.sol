@@ -61,7 +61,7 @@ contract Fidosafe {
     event UserCreated(string text, uint32 time);
 
     constructor(uint256 pubkey) public {
-        version = 1_100_505;
+        version = 1_000_602;
         require(pubkey != 0, 120);
         tvm.accept();
         mUsers[pubkey] = User(pubkey, 1);
@@ -140,13 +140,18 @@ contract Fidosafe {
         return slice.decode(uint8);
     }
 
+    function removeUserParser(uint32 trId) private view returns (uint256 pubkey) {
+        Transaction tr = mTransactions[trId];
+        TvmSlice slice = tr.params.toSlice();
+        return slice.decode(uint256);
+    }
+
     //
     //  Contract UX operations
     //
 
     function addUser(uint32 trId, uint256 pubkey) onlyAdmin public {
         tvm.accept();
-        emit UserCreated("🍗", now);
         // Check if the user is already among the users
         require(!mUsers.exists(pubkey), OP_CODE_CONFLICT, "User already exists");
 
@@ -182,18 +187,49 @@ contract Fidosafe {
             tr.status = TR_STATUS_CONFIRMED;
             mUsers[pubkey] = User(pubkey, 1);
         }
-        if (declined > numUsers - requiredConfirmations) {
-            tr.status = TR_STATUS_DECLINED;
-        }
+
         mTransactions[trId] = tr;
     }
 
     function removeUser(uint32 trId, uint256 pubkey) onlyAdmin public {
         // TODO: if req confirmations more than the remaining users => dec the conf number
         tvm.accept();
-        if (mUsers.exists(pubkey)) {
+        // Check if the user is already among the users
+        require(mUsers.exists(pubkey), OP_CODE_CONFLICT, "User does not exist");
+        uint8 numUsers = uint8(getUsers().length);
+        require(numUsers > 1, OP_CODE_CONFLICT, "Cannot remove the last user");
+
+        Transaction tr;
+        User user = mUsers[msg.pubkey()];
+        // Check if the transaction exists and its status is in progress, if not = create a transaction
+        if (trId != 0) {
+            require(isActiveTransaction(trId), OP_CODE_CONFLICT, "The transaction is not active or does not exist");
+            tr = mTransactions[trId];
+            // Check that the type of the transaction corresponds to addUser
+            require(tr.trType == TR_TYPE_REMOVE_USER, OP_CODE_CONFLICT, "The transaction type is from a different operation");
+            require(removeUserParser(trId) == pubkey, OP_CODE_CONFLICT, "The transaction data is different to the requested operation data");
+        }
+        else {
+            trId = genTransactionId();
+            TvmBuilder params;
+            params.store(pubkey);
+            TvmCell paramsCell = params.toCell();
+            tr = Transaction(trId, user, paramsCell, format("0x{:x}", pubkey), TR_STATUS_IN_PROGRESS, now, TR_TYPE_REMOVE_USER);
+        }
+        // add the confirmation if not already exists
+        addConfirmation(trId, user);
+
+
+
+        // check if the necessary amount of confirmations is received (including +1 from the user)
+        (uint8 accepted, uint8 declined) = getNumConfirmations(trId);
+        // run the operation
+        // change the transaction status
+        if (accepted >= requiredConfirmations) {
+            tr.status = TR_STATUS_CONFIRMED;
             delete mUsers[pubkey];
         }
+        mTransactions[trId] = tr;
     }
 
     function changeReqConfirmations(uint32 trId, uint8 newReqConfirmations) onlyAdmin public {
@@ -231,9 +267,6 @@ contract Fidosafe {
             requiredConfirmations = newReqConfirmations;
         }
 
-        if (declined > numUsers - requiredConfirmations) {
-            tr.status = TR_STATUS_DECLINED;
-        }
         mTransactions[trId] = tr;
     }
 

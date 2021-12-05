@@ -56,4 +56,16 @@ export class DebotContractApi {
         };
 
     }
+
+    static async getRemoveUserData(debotAccount: Account, safeAddress: string, trId: number, removeUserAddress: string): ConfirmationMsg {
+        let out = await debotAccount.runLocal("getRemoveUserData", {fsAddress: safeAddress, trId: trId, uPubkey: removeUserAddress});
+        let pk = DebotContractApi.shrinkPubkey(removeUserAddress);
+        return {
+           url: `https://uri.ton.surf/debot?net=devnet&address=${debotAccount.address}&message=${out.decoded.output.data}`,
+           title: 'Remove a User',
+           description: `Scan the QR code or follow the link to remove a user with the public key: ${pk}`
+        };
+
+    }
+
 }

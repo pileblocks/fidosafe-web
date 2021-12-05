@@ -1,5 +1,5 @@
 <template>
-    <div class="d-flex">
+    <div class="d-flex mr-2" v-if="transaction.status !== TR_STATUS_COMPLETED">
         <b-button class="btn-reject" v-on:click="rejectTransaction()"><i class="bi bi-x-lg"></i>
         </b-button>
         <b-button class="btn-confirm ml-2" v-on:click="confirmTransaction()"><i class="bi bi-check-lg"></i>
@@ -14,58 +14,77 @@
         RESOLUTION_CONFIRM,
         RESOLUTION_REJECT,
         TR_ADD_USER_PARAMS,
-        TR_CHANGE_CONFIRMS_PARAMS,
+        TR_CHANGE_CONFIRMS_PARAMS, TR_REMOVE_USER_PARAMS,
         TR_TYPE_ADD_USER,
-        TR_TYPE_CHANGE_CONFIRMS
+        TR_TYPE_CHANGE_CONFIRMS, TR_TYPE_REMOVE_USER,
+        TR_STATUS_COMPLETED, TR_STATUS_INPROGRESS
     } from "../data/AppTypes";
-    import { DebotContractApi } from "../api/DebotContractApi";
+import { DebotContractApi } from "../api/DebotContractApi";
+export default {
+    name: "TransactionResolve",
+    props: ['transaction'],
+    data: function() {
+      return {
+          TR_STATUS_COMPLETED: TR_STATUS_COMPLETED,
+          TR_STATUS_INPROGRESS: TR_STATUS_INPROGRESS,
+      }
+    },
+    methods: {
+        async confirmTransaction() {
+            let confirmObj = await DebotContractApi.getResolveTransactionData(this.debotAccount, this.$route.params.safeAddress, this.transaction.id, RESOLUTION_CONFIRM);
+            this.$store.commit('Confirmation/sendConfrimation', confirmObj);
+        },
+        async rejectTransaction() {
+            let confirmObj = await DebotContractApi.getResolveTransactionData(this.debotAccount, this.$route.params.safeAddress, this.transaction.id, RESOLUTION_REJECT);
+            this.$store.commit('Confirmation/sendConfrimation', confirmObj);
+        },
+        async addUser(address: string) {
+            let confirmObj = await DebotContractApi.getAddUserData(this.debotAccount, this.$route.params.safeAddress, this.transaction.id, address);
+            this.$store.commit('Confirmation/sendConfrimation', confirmObj);
+        },
+        async changeConfirmations(confirmations: number) {
+            let confirmObj = await DebotContractApi.getChangeReqConfirmationsData(this.debotAccount, this.$route.params.safeAddress, this.transaction.id, confirmations);
+            this.$store.commit('Confirmation/sendConfrimation', confirmObj);
+        },
+        async removeUser(address: string) {
+            let confirmObj = await DebotContractApi.getRemoveUserData(this.debotAccount, this.$route.params.safeAddress, this.transaction.id, address);
+            this.$store.commit('Confirmation/sendConfrimation', confirmObj);
+        },
 
-    export default {
-        name: "TransactionResolve",
-        props: ['transaction'],
-        methods: {
-            async confirmTransaction() {
-                let confirmObj = await DebotContractApi.getResolveTransactionData(this.debotAccount, this.$route.params.safeAddress, this.transaction.id, RESOLUTION_CONFIRM);
-                this.$store.commit('Confirmation/sendConfrimation', confirmObj);
-            },
-            async rejectTransaction() {
-                let confirmObj = await DebotContractApi.getResolveTransactionData(this.debotAccount, this.$route.params.safeAddress, this.transaction.id, RESOLUTION_REJECT);
-                this.$store.commit('Confirmation/sendConfrimation', confirmObj);
-            },
-            async addUser(address: string) {
-                let confirmObj = await DebotContractApi.getAddUserData(this.debotAccount, this.$route.params.safeAddress, this.transaction.id, address);
-                this.$store.commit('Confirmation/sendConfrimation', confirmObj);
-            },
-            async changeConfirmations(confirmations: number) {
-                let confirmObj = await DebotContractApi.getChangeReqConfirmationsData(this.debotAccount, this.$route.params.safeAddress, this.transaction.id, confirmations);
-                this.$store.commit('Confirmation/sendConfrimation', confirmObj);
-            },
-
-            async runOperation(){
-                let trParams = {};
-                switch (this.transaction.trType) {
-                    case TR_TYPE_ADD_USER:
-                        trParams = await this.everscale.abi.decode_boc(
-                                        {
-                                        params: [TR_ADD_USER_PARAMS],
-                                        boc: this.transaction.params,
-                                        allow_partial: false
-                                        });
-                        this.addUser(trParams.data.pubkey);
-                        break;
-                    case TR_TYPE_CHANGE_CONFIRMS:
-                        trParams = await this.everscale.abi.decode_boc(
-                                        {
-                                        params: [TR_CHANGE_CONFIRMS_PARAMS],
-                                        boc: this.transaction.params,
-                                        allow_partial: false
-                                        });
-                        this.changeConfirmations(parseInt(trParams.data.confirmations));
-                        break;
-                }
+        async runOperation(){
+            let trParams = {};
+            switch (this.transaction.trType) {
+                case TR_TYPE_ADD_USER:
+                    trParams = await this.everscale.abi.decode_boc(
+                                    {
+                                    params: [TR_ADD_USER_PARAMS],
+                                    boc: this.transaction.params,
+                                    allow_partial: false
+                                    });
+                    this.addUser(trParams.data.pubkey);
+                    break;
+                case TR_TYPE_CHANGE_CONFIRMS:
+                    trParams = await this.everscale.abi.decode_boc(
+                                    {
+                                    params: [TR_CHANGE_CONFIRMS_PARAMS],
+                                    boc: this.transaction.params,
+                                    allow_partial: false
+                                    });
+                    this.changeConfirmations(parseInt(trParams.data.confirmations));
+                    break;
+                case TR_TYPE_REMOVE_USER:
+                    trParams = await this.everscale.abi.decode_boc(
+                                    {
+                                    params: [TR_REMOVE_USER_PARAMS],
+                                    boc: this.transaction.params,
+                                    allow_partial: false
+                                    });
+                    this.removeUser(trParams.data.pubkey);
+                    break;
             }
         }
     }
+}
 </script>
 
 <style scoped>
