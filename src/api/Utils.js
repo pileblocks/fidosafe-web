@@ -8,4 +8,9 @@ export class Utils {
                 minute: "2-digit"
             })
     }
+
+    static short(value: string): string {
+        return value.slice(0, 8) + '...' + value.slice(-8);
+    }
+
 }

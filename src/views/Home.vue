@@ -2,7 +2,7 @@
   <b-container>
     <b-row>
       <b-col class="mt-5">
-        <h1>Create a Fidosafe</h1>
+        <h2>Create a Fidosafe</h2>
         <p class="lead mt-3">
         We'll transfer you to our DeBot to create a safe. Once the safe is complete, you will navigate back to the website to further manage your safe.
         </p>

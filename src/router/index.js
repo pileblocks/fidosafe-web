@@ -4,6 +4,7 @@ import Users from '../views/Users'
 import Home from '../views/Home'
 import Settings from '../views/Settings'
 import AddUser from '../views/AddUser'
+import AddTransaction from '../views/AddTransaction'
 import Transactions from '../views/Transactions'
 
 Vue.use(VueRouter);
@@ -33,6 +34,11 @@ const routes = [
       path: '/:safeAddress/addUser',
       name: 'AddUser',
       component: AddUser
+  },
+  {
+      path: '/:safeAddress/addTransaction',
+      name: 'AddTransaction',
+      component: AddTransaction
   }
 ]
 

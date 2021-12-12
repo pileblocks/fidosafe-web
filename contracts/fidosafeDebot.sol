@@ -1,4 +1,4 @@
-pragma ton -solidity >= 0.43.0;
+pragma ton-solidity >= 0.43.0;
 pragma AbiHeader expire;
 pragma AbiHeader time;
 pragma AbiHeader pubkey;
@@ -17,6 +17,7 @@ interface Fidosafe {
     function removeUser(uint32 trId, uint256 pubkey) external;
     function changeReqConfirmations(uint32 trId, uint8 newReqConfirmations) external;
     function resolveTransaction(uint32 trId, uint8 resolution) external;
+    function sendTransfer(uint32 trId, address recipient, uint128 value) external;
 }
 
 abstract contract Fsafe {
@@ -50,10 +51,10 @@ contract FidosafeDebot is Debot {
         string name, string version, string publisher, string key, string author,
         address support, string hello, string language, string dabi, bytes icon
     ) {
-        name = "Fidosafe Create & Confirm";
-        version = "0.5.0";
+        name = "Fidosafe: Create & Confirm";
+        version = "1.0.7";
         publisher = "Norton";
-        key = "Use this bot to create a new Fidosafe in 3 easy steps:\n\n① You fund a new contract address.\n\n② We deploy to this address.\n\n③ You receive the web link and start working with your contract.\n\nFor more information, see https://fidosafe.com";
+        key = "Fidosafe is a user-friendly, convenient and flexible web multisig wallet with confirmations from Surf accounts.\nUse this bot to create a Fidosafe in 3 easy steps:\n\n① You fund a new contract address.\n\n② This bot deploys the safe to the funded address.\n\n③ You receive the web link and start working with your safe.\n\nFor more information, see https://fidosafe.com";
         author = "Norton";
         support = address.makeAddrStd(0, 0x66e01d6df5a8d7677d9ab2daf7f258f1e2a7fe73da5320300395f99e01dc3b5f);
         language = "en";
@@ -112,12 +113,12 @@ contract FidosafeDebot is Debot {
             deploySucceed();
 
         } else if (acc_type == -1)  { // acc is inactive
-            Terminal.print(0, "Step ①\n\nWe'll create a new contract for you.\n\n*Note* To deploy the contract, it should have a positive balance. For this, now we will send 1 TON to this address.");
+            Terminal.print(0, "Step ①\n\nWe'll create a new contract for you.\n\n*Note* To deploy the contract, it should have a positive balance. For this, now we will send 1 EVER to the address corresponding to your new safe.");
             ConfirmInput.get(tvm.functionId(confirmPayment), "Please confirm the transaction.");
 
         } else  if (acc_type == 0) { // acc is uninitialized
             Terminal.print(0, format(
-                "Step ②\n\nDeploying new contract. We send a message to your contract to deploy the contract code. The associated fees will be deducted from the new Fidosafe contract address."
+                "Step ②\n\nDeploying the safe. We send a message to your contract to deploy the contract code. You won't pay for this message! The associated fees will be taken from the already provided 1 EVER."
             ));
             ConfirmInput.get(tvm.functionId(confirmDeploy), "Please confirm the deploy transaction.");
 
@@ -168,7 +169,7 @@ contract FidosafeDebot is Debot {
     }
 
     function deploySucceed() public {
-        Terminal.print(0, format("Your contract is ready!\n\nPlease navigate to https://fidosafe.com/#/{}/users", fidoSafeAddress));
+        Terminal.print(0, format("Your contract is ready!\n\nPlease navigate to https://fidosafe.com/#/{}/transactions (clickable)", fidoSafeAddress));
     }
 
     function printError(uint32 sdkError, uint32 exitCode) public {
@@ -193,7 +194,7 @@ contract FidosafeDebot is Debot {
         return msg;
     }
 
-    function getAddUserData(address fsAddress, uint32 trId, uint256 uPubkey) public view returns(TvmCell data) {
+    function getAddUserData(address fsAddress, uint32 trId, uint256 uPubkey) public pure returns(TvmCell data) {
         TvmCell body = tvm.encodeBody(FidosafeDebot.addUser, fsAddress, trId, uPubkey);
         TvmBuilder msgData;
         msgData = addHeaders(msgData);
@@ -202,7 +203,8 @@ contract FidosafeDebot is Debot {
     }
 
     function addUser(address fsAddress, uint32 trId, uint256 uPubkey) public {
-        Terminal.print(0, format("Add new user: {}", uPubkey));
+        Terminal.print(0, format("Confirmation to add a user: {}", uPubkey));
+        Terminal.print(0, format("See the result at: https://fidosafe.com/#/{}/transactions (clickable)", fsAddress));
         Fidosafe(fsAddress).addUser{
             abiVer: 2,
             extMsg: true,
@@ -210,12 +212,12 @@ contract FidosafeDebot is Debot {
             pubkey: userPubkey,
             time: uint64(now),
             expire: 0,
-            callbackId: tvm.functionId(reInit),
-            onErrorId: tvm.functionId(printError)  // Just repeat if something went wrong
+            callbackId: 0,
+            onErrorId: tvm.functionId(printError)
         }(trId, uPubkey);
     }
 
-    function getChangeReqConfirmationsData(address fsAddress, uint32 trId, uint8 newReqConfirmations) public view returns(TvmCell data) {
+    function getChangeReqConfirmationsData(address fsAddress, uint32 trId, uint8 newReqConfirmations) public pure returns(TvmCell data) {
         TvmCell body = tvm.encodeBody(FidosafeDebot.changeReqConfirmations, fsAddress, trId, newReqConfirmations);
         TvmBuilder msgData;
         msgData = addHeaders(msgData);
@@ -224,7 +226,8 @@ contract FidosafeDebot is Debot {
     }
 
     function changeReqConfirmations(address fsAddress, uint32 trId, uint8 newReqConfirmations) public {
-        Terminal.print(0, format("Change confirmations to: {}", newReqConfirmations));
+        Terminal.print(0, format("Confirmation to change the num of confirmations to: {}", newReqConfirmations));
+        Terminal.print(0, format("See the result at: https://fidosafe.com/#/{}/transactions (clickable)", fsAddress));
         Fidosafe(fsAddress).changeReqConfirmations{
             abiVer: 2,
             extMsg: true,
@@ -232,12 +235,12 @@ contract FidosafeDebot is Debot {
             pubkey: userPubkey,
             time: uint64(now),
             expire: 0,
-            callbackId: tvm.functionId(reInit),
-            onErrorId: tvm.functionId(printError)  // Just repeat if something went wrong
+            callbackId: 0,
+            onErrorId: tvm.functionId(printError)
         }(trId, newReqConfirmations);
     }
 
-    function getResolveTransactionData(address fsAddress, uint32 trId, uint8 resolution) public view returns(TvmCell data) {
+    function getResolveTransactionData(address fsAddress, uint32 trId, uint8 resolution) public pure returns(TvmCell data) {
         TvmCell body = tvm.encodeBody(FidosafeDebot.resolveTransaction, fsAddress, trId, resolution);
         TvmBuilder msgData;
         msgData = addHeaders(msgData);
@@ -247,6 +250,7 @@ contract FidosafeDebot is Debot {
 
     function resolveTransaction(address fsAddress, uint32 trId, uint8 resolution) public {
         Terminal.print(0, format("Resolution: {}", resolution));
+        Terminal.print(0, format("See the result at: https://fidosafe.com/#/{}/transactions (clickable)", fsAddress));
         Fidosafe(fsAddress).resolveTransaction{
             abiVer: 2,
             extMsg: true,
@@ -254,12 +258,12 @@ contract FidosafeDebot is Debot {
             pubkey: userPubkey,
             time: uint64(now),
             expire: 0,
-            callbackId: tvm.functionId(reInit),
-            onErrorId: tvm.functionId(printError)  // Just repeat if something went wrong
+            callbackId: 0,
+            onErrorId: tvm.functionId(printError)
         }(trId, resolution);
     }
 
-    function getRemoveUserData(address fsAddress, uint32 trId, uint256 uPubkey) public view returns(TvmCell data) {
+    function getRemoveUserData(address fsAddress, uint32 trId, uint256 uPubkey) public pure returns(TvmCell data) {
         TvmCell body = tvm.encodeBody(FidosafeDebot.removeUser, fsAddress, trId, uPubkey);
         TvmBuilder msgData;
         msgData = addHeaders(msgData);
@@ -268,7 +272,8 @@ contract FidosafeDebot is Debot {
     }
 
     function removeUser(address fsAddress, uint32 trId, uint256 uPubkey) public {
-        Terminal.print(0, format("Remove user: {}", uPubkey));
+        Terminal.print(0, format("Confirmation to remove user: {}", uPubkey));
+        Terminal.print(0, format("See the result at: https://fidosafe.com/#/{}/transactions (clickable)", fsAddress));
         Fidosafe(fsAddress).removeUser{
             abiVer: 2,
             extMsg: true,
@@ -276,8 +281,31 @@ contract FidosafeDebot is Debot {
             pubkey: userPubkey,
             time: uint64(now),
             expire: 0,
-            callbackId: tvm.functionId(reInit),
-            onErrorId: tvm.functionId(printError)  // Just repeat if something went wrong
+            callbackId: 0,
+            onErrorId: tvm.functionId(printError)
         }(trId, uPubkey);
+    }
+
+    function getSendTransferData(address fsAddress, uint32 trId, address recipient, uint128 value) public pure returns(TvmCell data) {
+        TvmCell body = tvm.encodeBody(FidosafeDebot.sendTransfer, fsAddress, trId, recipient, value);
+        TvmBuilder msgData;
+        msgData = addHeaders(msgData);
+        msgData.store(body);
+        data = msgData.toCell();
+    }
+
+    function sendTransfer(address fsAddress, uint32 trId, address recipient, uint128 value) public {
+        Terminal.print(0, format("Confirmation to send {:t} EVER to address: {}", value, recipient));
+        Terminal.print(0, format("See the result at: https://fidosafe.com/#/{}/transactions (clickable)", fsAddress));
+        Fidosafe(fsAddress).sendTransfer{
+            abiVer: 2,
+            extMsg: true,
+            sign: true,
+            pubkey: userPubkey,
+            time: uint64(now),
+            expire: 0,
+            callbackId: 0,
+            onErrorId: tvm.functionId(printError)
+        }(trId, recipient, value);
     }
 }

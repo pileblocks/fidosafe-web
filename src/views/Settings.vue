@@ -2,7 +2,7 @@
   <b-container class="section-panel" fluid="lg">
     <b-row>
       <b-col>
-        <h1 class="pb-4 pt-4 mb-0">Settings</h1>
+        <h2 class="pb-4 pt-4 mb-0">Settings</h2>
         <b-form>
           <b-form-group
             label="Required number of confirmations:"

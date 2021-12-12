@@ -2,7 +2,17 @@ import type { FidoConfirmation, FidoTransaction, FidoUser, NumConfirmations } fr
 import { FidosafeContract } from "../../contract_wrappers/FidosafeContract";
 import { Account } from "@tonclient/appkit";
 import { signerNone, MessageBodyType } from "@tonclient/core";
-import { RESOLUTION_CONFIRM } from "../data/AppTypes";
+import {
+    EVER_UNITS_IN_ONE,
+    RESOLUTION_CONFIRM,
+    TR_ADD_USER_PARAMS,
+    TR_CHANGE_CONFIRMS_PARAMS,
+    TR_REMOVE_USER_PARAMS, TR_SEND_PARAMS,
+    TR_TYPE_ADD_USER,
+    TR_TYPE_CHANGE_CONFIRMS, TR_TYPE_RECEIVE, TR_TYPE_REMOVE_USER, TR_TYPE_SEND
+} from "../data/AppTypes";
+import BigNumber from "bignumber.js";
+import { Utils as Util } from "./Utils";
 
 type DecodedMessage = {
     body_type: string,
@@ -33,9 +43,20 @@ export class SafeContractApi {
 
         this.vue = vue;
 
+        this.account.subscribeAccount("balance", (acc) => {
+            this.account.refresh();
+            this.vue.$store.commit('Confirmation/toggleVisible', false);
+            this.vue.$store.commit('Safe/setBalance', acc.balance);
+            this.vue.$store.dispatch('Safe/getLastTransactionId');
+        });
+
         this.account.subscribeMessages("boc", async (msg) => {
+            try {
             const decoded:DecodedMessage = await this.account.decodeMessage(msg.boc);
             this.subMessagesProcessor(decoded);
+            } catch (e) {
+                console.log(e)
+            }
         });
 
     }
@@ -61,6 +82,9 @@ export class SafeContractApi {
                 else if (decoded.name === "removeUser") {
                     this.removeUserProcessor(decoded.value);
                 }
+                else if (decoded.name === "sendTransfer") {
+                    this.sendTransferProcessor(decoded.value);
+                }
                 this.vue.$store.commit('Confirmation/toggleVisible', false);
                 break;
         }
@@ -81,11 +105,11 @@ export class SafeContractApi {
         );
     }
 
-    addUserProcessor(message: {pubkey: string, trId: number})  {
+    addUserProcessor(message: {pubkey: string, trId: string})  {
 
         let notification = {linkText: 'Go to Transactions', message: `Request: Add a user with the public key ${message.pubkey}`};
         this.vue.$store.dispatch('Safe/getUsers');
-        this.vue.$store.dispatch('Safe/getTransactions');
+        this.vue.$store.dispatch('Safe/getLastTransactionId');
         message.trId = parseInt(message.trId);
         if (message.trId > 0)
             this.vue.$store.dispatch('Safe/getNumConfirmations', message.trId);
@@ -95,8 +119,8 @@ export class SafeContractApi {
         this.vue.$root.$bvToast.toast([msg], { appendToast: true, noCloseButton: false, autoHideDelay: 10000, solid: true});
     }
 
-    changeReqConfirmationsProcessor(message: {newReqConfirmations: number, trId: number})  {
-        this.vue.$store.dispatch('Safe/getTransactions');
+    changeReqConfirmationsProcessor(message: {newReqConfirmations: number, trId: string})  {
+        this.vue.$store.dispatch('Safe/getLastTransactionId');
         let notification = {linkText: 'Go to Transactions', message: `Request: Change # of confirmations to: ${message.newReqConfirmations}`};
         this.vue.$store.dispatch('Safe/getRequiredConfirmations');
         message.trId = parseInt(message.trId);
@@ -108,10 +132,10 @@ export class SafeContractApi {
         this.vue.$root.$bvToast.toast([msg], { appendToast: true, noCloseButton: false, autoHideDelay: 10000, solid: true});
     }
 
-    resolveTransactionProcessor(message: {resolution: number, trId: number}) {
+    resolveTransactionProcessor(message: {resolution: number, trId: string}) {
          message.trId = parseInt(message.trId);
          message.resolution = parseInt(message.resolution);
-         this.vue.$store.dispatch('Safe/getTransactions');
+         this.vue.$store.dispatch('Safe/getLastTransactionId');
          message.trId = parseInt(message.trId);
          if (message.trId > 0)
             this.vue.$store.dispatch('Safe/getNumConfirmations', message.trId);
@@ -124,10 +148,10 @@ export class SafeContractApi {
 
     }
 
-    removeUserProcessor(message: {pubkey: string, trId: number})  {
+    removeUserProcessor(message: {pubkey: string, trId: string})  {
         let notification = {linkText: 'Go to Transactions', message: `Request: Remove a user with the public key ${message.pubkey}`};
         this.vue.$store.dispatch('Safe/getUsers');
-        this.vue.$store.dispatch('Safe/getTransactions');
+        this.vue.$store.dispatch('Safe/getLastTransactionId');
         message.trId = parseInt(message.trId);
         if (message.trId > 0)
             this.vue.$store.dispatch('Safe/getNumConfirmations', message.trId);
@@ -136,6 +160,78 @@ export class SafeContractApi {
                                         notification.linkText);
         this.vue.$root.$bvToast.toast([msg], { appendToast: true, noCloseButton: false, autoHideDelay: 10000, solid: true});
     }
+
+    sendTransferProcessor(message: {trId: number, value: string, recipient: string}) {
+        let notification = {linkText: 'Go to Transactions', message: `Request: Send ${new BigNumber(message.value).dividedBy(EVER_UNITS_IN_ONE).toFormat(4)} tokens to the address ${message.recipient}`};
+        message.trId = parseInt(message.trId);
+        if (message.trId > 0)
+            this.vue.$store.dispatch('Safe/getNumConfirmations', message.trId);
+        let msg = this._genMessgeContent(notification.message,
+                                 { to: { name: 'Transactions', params: { safeAddress: this.account.address }}},
+                                        notification.linkText);
+        this.vue.$root.$bvToast.toast([msg], { appendToast: true, noCloseButton: false, autoHideDelay: 10000, solid: true});
+    }
+
+    async getAddUserParams(transaction: FidoTransaction): {data: {pubkey: string}} {
+        return await this.vue.everscale.abi.decode_boc(
+            {
+                params: [TR_ADD_USER_PARAMS],
+                boc: transaction.params,
+                allow_partial: false
+            });
+    }
+
+    async getChangeConfirmsParams(transaction: FidoTransaction): {data: {confirmations: string}} {
+        return await this.vue.everscale.abi.decode_boc(
+            {
+                params: [TR_CHANGE_CONFIRMS_PARAMS],
+                boc: transaction.params,
+                allow_partial: false
+            });
+    }
+
+    async getRemoveUserParams(transaction: FidoTransaction): {data: {pubkey: string}} {
+        return await this.vue.everscale.abi.decode_boc(
+            {
+                params: [TR_REMOVE_USER_PARAMS],
+                boc: transaction.params,
+                allow_partial: false
+            });
+    }
+
+    async getSendParams(transaction: FidoTransaction): {data: {recipient: string, value: string}} {
+        return await this.vue.everscale.abi.decode_boc(
+            {
+                params: TR_SEND_PARAMS,
+                boc: transaction.params,
+                allow_partial: false
+            });
+    }
+
+    async getTransactionParams(transaction: FidoTransaction): string {
+        let trParams = null;
+        switch (transaction.trType) {
+            case TR_TYPE_ADD_USER:
+                trParams = await this.getAddUserParams(transaction);
+                return `Add a user: ${Util.short(trParams.data.pubkey)}`;
+            case TR_TYPE_CHANGE_CONFIRMS:
+                trParams = await this.getChangeConfirmsParams(transaction);
+                return `New number of confirmations: ${trParams.data.confirmations}`;
+            case TR_TYPE_REMOVE_USER:
+                trParams = await this.getRemoveUserParams(transaction);
+                return `Remove a user: ${Util.short(trParams.data.pubkey)}`;
+            case TR_TYPE_SEND:
+                trParams = await this.getSendParams(transaction);
+                return `Send ${new BigNumber(trParams.data.value).dividedBy(EVER_UNITS_IN_ONE).toFixed(4)} tokens to a receiver: ${Util.short(trParams.data.recipient)}`;
+            case TR_TYPE_RECEIVE:
+                let sender, value;
+                [sender, value] = transaction.paramsStr.split('|')
+                trParams = new BigNumber(value).dividedBy(EVER_UNITS_IN_ONE).toFixed(4);
+                return `Receive ${trParams} tokens from ${Util.short(sender)}`;
+        }
+    }
+
+
 
     //
     // External calls
@@ -146,8 +242,14 @@ export class SafeContractApi {
         return out.decoded.output.users;
     }
 
-    async getTransactions(): Promise<Array<FidoTransaction>> {
-        let out = await this.account.runLocal("getTransactions", {});
+
+    async getLastTransactionId(): number {
+        let out = await this.account.runLocal("currentTransactionId", {});
+        return parseInt(out.decoded.output.currentTransactionId);
+    }
+
+    async getTransactions(lastTrid: number, number: number): Promise<Array<FidoTransaction>> {
+        let out = await this.account.runLocal("getTransactions", {start: lastTrid, number: number});
         return out.decoded.output.transactions;
     }
 

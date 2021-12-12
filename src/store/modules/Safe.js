@@ -1,6 +1,7 @@
 import type { FidoConfirmation, FidoTransaction, FidoUser, NumConfirmations } from "../../data/AppTypes";
 import { SafeContractApi } from "../../api/SafeContractApi";
-import Vue from 'vue';
+import  { BigNumber } from "bignumber.js";
+import { EVER_UNITS_IN_ONE, MAX_NUM_TRANS_PER_PAGE } from "../../data/AppTypes";
 
 export const Safe: {
                 state: {
@@ -10,7 +11,9 @@ export const Safe: {
                     transactions: Array<FidoTransaction>,
                     requiredConfirmations: Number,
                     numberOfUsers: Number,
-                    confirmations: Array<FidoConfirmation>
+                    confirmations: Array<FidoConfirmation>,
+                    balance: number,
+                    lastTrid: number
                 }
                 } = {
     namespaced: true,
@@ -20,7 +23,9 @@ export const Safe: {
         transactions: [],
         requiredConfirmations: 1,
         numberOfUsers: 1,
-        confirmations: []
+        confirmations: [],
+        balance: 0,
+        lastTrid: 0,
     },
     mutations: {
         changeApi(state: Object, api: SafeContractApi) {
@@ -45,10 +50,18 @@ export const Safe: {
             }
         },
         getNumConfirmations(state: Object, {numConfirmations, trId}) {
-            let {accepted, declined} = numConfirmations;
+            let {accepted, declined}:NumConfirmations = numConfirmations;
             let tr = state.transactions.find((tr) => tr.id === trId);
             tr.accepted = parseInt(accepted);
             tr.declined = parseInt(declined);
+        },
+
+        setBalance(state: Object, balance: string) {
+            return state.balance = new BigNumber(parseInt(balance)).dividedBy(EVER_UNITS_IN_ONE).toNumber();
+        },
+
+        setLastTransactionId(state: Object, trId: number) {
+            state.lastTrid = trId;
         }
 
     },
@@ -66,10 +79,18 @@ export const Safe: {
             });
             commit('getUsers', processedUsers);
         },
-        async getTransactions({ commit, state }): void {
-            let transactions = await state.api.getTransactions();
+
+        async getLastTransactionId({commit, dispatch, state}): void {
+            let trId = await state.api.getLastTransactionId();
+            commit('setLastTransactionId', trId);
+            dispatch('getTransactions', {lastTrid: trId, number: MAX_NUM_TRANS_PER_PAGE});
+        },
+
+        async getTransactions({ commit, state }, {lastTrid, number}): void {
+            let transactions = await state.api.getTransactions(lastTrid, number);
             let processedTransactions = transactions.map((tr) => {
                 tr.created = parseInt(tr.created);
+                tr.completed = parseInt(tr.completed);
                 tr.initiator.role = parseInt(tr.initiator.role);
                 tr.status = parseInt(tr.status);
                 tr.id = parseInt(tr.id);
@@ -106,8 +127,11 @@ export const Safe: {
             commit('getConfirmations', {conf: processedConfs, trId: trId});
         },
         async getNumConfirmations({ commit, state }, trId: number): void {
-        let numConfirmations = await state.api.getNumConfirmations(trId);
-        commit('getNumConfirmations', {numConfirmations: numConfirmations, trId: trId});
+            let numConfirmations = await state.api.getNumConfirmations(trId);
+            commit('getNumConfirmations', {numConfirmations: numConfirmations, trId: trId});
+        },
+        async getBalance({commit, state}):string {
+            commit('setBalance', await state.api.account.getBalance());
         }
     },
 

@@ -18,7 +18,7 @@ tondev sol compile fidosafeDebot.sol
 tondev js wrap fidosafeDebot.sol --output ../contract_wrappers/FidosafeDebotContract.js
 
 DEBOT_ADDRESS=$(tondev contract info $DEBOT_NAME -n $NWK | grep "Address:" | cut -d " " -f 4)
-ICON_BYTES=$(base64 -w 0 hellodebot.png)
+ICON_BYTES=$(base64 -w 0 logo.png)
 ICON=$(echo -n "data:image/png;base64,$ICON_BYTES" | xxd -ps -c 20000)
 DEBOT_ABI=$(cat $DEBOT_NAME.abi.json | xxd -ps -c 20000)
 

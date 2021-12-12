@@ -6,7 +6,7 @@
             <p class="lead pl-4">{{ description }}
             </p>
             <div v-html="qrImage" class="qr-code"></div>
-            <p>Alternatively, use this <a v-bind:href="url" target="_blank">LINK</a></p>
+            <p>Alternatively, use this <a v-bind:href="url" target="_blank"><u>LINK</u></a></p>
             <div v-on:click="hide()" class="confirmation-close"><i class="bi bi-x"></i>
             </div>
         </div>

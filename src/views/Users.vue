@@ -3,20 +3,25 @@
 <b-container class="section-panel" fluid="lg">
 
     <div class="d-flex justify-content-between">
-      <h1 class="pt-4 pb-4 mb-0">Users</h1>
+      <h2 class="pt-4 pb-4 mb-0">Users</h2>
       <div class="d-flex align-items-center">
           <b-button variant="primary" type="submit" :to="{ name: 'AddUser', params: { safeAddress: this.$route.params.safeAddress } }" v-bind:disabled="!this.$route.params.safeAddress"><i class="bi bi-plus-lg"></i> Add</b-button>
       </div>
     </div>
 
-    <b-row v-for="user in userList" :key="user.pubkey" class="mb-2">
-        <b-col sm="7" class="pubkey-wrap">{{ user.pubkey }}</b-col>
-        <b-col sm="1">{{ user.role }}</b-col>
-        <b-col sm="4">
-            <b-button class="btn-reject"><i class="bi bi-x-lg" v-on:click="removeUser(user.pubkey)"></i>
-            </b-button>
-        </b-col>
-    </b-row>
+    <b-overlay class="mb-5" :show="userList.length === 0">
+        <b-row class="mb-2 transaction-border pt-2 d-sm-flex d-none">
+            <b-col sm="7">Public Key</b-col>
+            <b-col sm="1">Operations</b-col>
+        </b-row>
+        <b-row v-for="user in userList" :key="user.pubkey" class="pt-2 pb-2 transaction-border">
+                <b-col sm="7" class="pubkey-wrap mb-1"><span class="d-sm-none d-inline font-weight-bold">Key: </span>{{ user.pubkey }}</b-col>
+                <b-col sm="1">
+                    <b-button class="btn-reject" v-on:click="removeUser(user.pubkey)"><i class="bi bi-x-lg"></i>
+                    </b-button>
+                </b-col>
+        </b-row>
+    </b-overlay>
 </b-container>
 
 </template>
@@ -41,7 +46,6 @@ export default {
     mounted() {
         this.$store.dispatch('Safe/initSafe', {address: this.$route.params.safeAddress, client: this.everscale, vue: this});
         this.$store.dispatch('Safe/getUsers');
-        this.$store.dispatch('Safe/getTransactions');
     },
     computed: {
         userList: function () {

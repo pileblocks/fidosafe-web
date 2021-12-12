@@ -9,6 +9,8 @@ import store from './store'
 import { TonClient } from '@tonclient/core';
 import { libWeb } from '@tonclient/lib-web';
 import { Everscale } from "./api/Everscale";
+import { BigNumber } from "bignumber.js";
+import { Utils } from "./api/Utils";
 
 Vue.config.productionTip = false;
 
@@ -20,7 +22,17 @@ Vue.use(ToastPlugin);
 Vue.use(Everscale);
 
 TonClient.useBinaryLibrary(libWeb);
+BigNumber.set({ DECIMAL_PLACES: 4 });
 console.log("Network:" + process.env.VUE_APP_EVERSCALE_URL);
+
+
+Vue.filter('short', function (value) {
+  return value.slice(0, 8) + '...' + value.slice(-8);
+});
+
+Vue.filter('formatDate', function (value) {
+  return Utils.showDate(value);
+});
 
 new Vue({
   router,

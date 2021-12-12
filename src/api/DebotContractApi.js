@@ -1,5 +1,6 @@
 import { Account } from "@tonclient/appkit";
-import { RESOLUTION_CONFIRM } from "../data/AppTypes";
+import { EVER_UNITS_IN_ONE, RESOLUTION_CONFIRM } from "../data/AppTypes";
+import BigNumber from "bignumber.js";
 
 type ConfirmationMsg = {
     url: string,
@@ -40,7 +41,7 @@ export class DebotContractApi {
         let out = await debotAccount.runLocal("getChangeReqConfirmationsData", {fsAddress: safeAddress, trId: trId, newReqConfirmations: newReqConfirmations});
         return {
            url: `https://uri.ton.surf/debot?net=devnet&address=${debotAccount.address}&message=${out.decoded.output.data}`,
-           title: "Change the Number of Confirmations",
+           title: "Number of Confirmations",
            description: `Change the number of confirmations to: ${newReqConfirmations}`
         };
 
@@ -66,6 +67,26 @@ export class DebotContractApi {
            description: `Scan the QR code or follow the link to remove a user with the public key: ${pk}`
         };
 
+    }
+
+    static getDepositData(safeAddress: string): ConfirmationMsg {
+        return {
+           url: `https://uri.ton.surf/transfer?net=devnet&address=${safeAddress}`,
+           title: 'Deposit Funds',
+           description: `Scan the QR code to get the deposit dialog.`
+        };
+
+    }
+
+    static async getSendTransferData(debotAccount: Account, safeAddress: string, trId: number, recipient: string, value: number) {
+        let valueEvers = new BigNumber(value).multipliedBy(EVER_UNITS_IN_ONE).toNumber();
+        let out = await debotAccount.runLocal("getSendTransferData", {fsAddress: safeAddress, trId: trId, recipient: recipient, value: valueEvers});
+        let pk = DebotContractApi.shrinkPubkey(recipient);
+        return {
+           url: `https://uri.ton.surf/debot?net=devnet&address=${debotAccount.address}&message=${out.decoded.output.data}`,
+           title: 'Send Tokens',
+           description: `Scan the QR code or follow the link to send ${value} tokens to address: ${pk}`
+        };
     }
 
 }
