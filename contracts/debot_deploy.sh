@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-NWK=dev
+NWK=main
 
 #se
 #dev
@@ -11,18 +11,18 @@ DEBOT_NAME=fidosafeDebot
 if [ $NWK == "se" ]
 then
     NETWORK=127.0.0.1
-    KEYS=keys.json
+    KEYS=keys
     SIGNER=norton
     sed -i "s/https:\/\/[0-9a-zA-Z\.]*fidosafe.com\/#\//https:\/\/test.fidosafe.com\/#\//g" fidosafeDebot.sol
 elif [ $NWK == "dev" ]
 then
     NETWORK=net.ton.dev
-    KEYS=keys.json
+    KEYS=keys
     SIGNER=norton
     sed -i "s/https:\/\/[0-9a-zA-Z\.]*fidosafe.com\/#\//https:\/\/test.fidosafe.com\/#\//g" fidosafeDebot.sol
 else
     NETWORK=main.ton.dev
-    KEYS=prod.keys.json
+    KEYS=prod.keys
     SIGNER=prod_signer
     sed -i "s/https:\/\/[0-9a-zA-Z\.]*fidosafe.com\/#\//https:\/\/app.fidosafe.com\/#\//g" fidosafeDebot.sol
 fi
@@ -39,15 +39,18 @@ tondev js wrap fidosafe.sol --output ../contract_wrappers/FidosafeContract.js
 
 FIDOSAFE_CODE=$(base64 -w 0 fidosafe.tvc)
 
-DEBOT_ADDRESS=$(tondev contract info $DEBOT_NAME -n $NWK -s $SIGNER -d mCode:\"$FIDOSAFE_CODE\" | grep "Address:" | cut -d " " -f 4)
+DEBOT_ADDRESS=$(tondev contract info $DEBOT_NAME -n $NWK -s $SIGNER | grep "Address:" | cut -d " " -f 4)
 ICON_BYTES=$(base64 -w 0 logo.png)
 ICON=$(echo -n "data:image/png;base64,$ICON_BYTES" | xxd -ps -c 20000)
 DEBOT_ABI=$(cat $DEBOT_NAME.abi.json | xxd -ps -c 20000)
 
 tondev contract deploy $DEBOT_NAME.sol -n $NWK -v 500000000 -s $SIGNER -d mCode:\"$FIDOSAFE_CODE\"
+tonos-cli --url $NETWORK call $DEBOT_ADDRESS setABI "{\"dabi\":\"$DEBOT_ABI\"}"  --abi $DEBOT_NAME.abi.json --sign $KEYS.json
+tonos-cli --url $NETWORK call $DEBOT_ADDRESS setIcon "{\"icon\":\"$ICON\"}"  --abi $DEBOT_NAME.abi.json --sign $KEYS.json
+tonos-cli --url $NETWORK call $DEBOT_ADDRESS setFidosafeCode "{\"code\":\"$FIDOSAFE_CODE\"}" --abi $DEBOT_NAME.abi.json --sign $KEYS.json
 
-tondev contract run -n $NWK -s $SIGNER --address $DEBOT_ADDRESS $DEBOT_NAME.abi.json setABI -i dabi:\"$DEBOT_ABI\"
-tondev contract run -n $NWK -s $SIGNER --address $DEBOT_ADDRESS $DEBOT_NAME.abi.json setIcon -i icon:\"$ICON\"
+
+#tondev contract run -n $NWK -s $SIGNER --address $DEBOT_ADDRESS $DEBOT_NAME.abi.json setIcon -i icon:\"$ICON\"
 
 # Set up the debot address in the web app
 if [ $NWK == "se" ]

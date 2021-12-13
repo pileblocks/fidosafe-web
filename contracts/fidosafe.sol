@@ -72,7 +72,7 @@ contract Fidosafe {
     constructor(uint256 pubkey) public {
 
         currentTransactionId = 1;
-        version = 1_000_700;
+        version = 1_000_702;
         require(pubkey != 0, 120);
         tvm.accept();
         User user = User(pubkey, 1);
