@@ -73,12 +73,12 @@ contract FidosafeDebot is Debot {
     //
 
     function start() public override {
-        contractVersion = 4;
+        contractVersion = 107;
         UserInfo.getPublicKey(tvm.functionId(setDefaultPubkey));
     }
 
     function reInit() public {
-        contractVersion = 5;
+        contractVersion = 107;
         UserInfo.getPublicKey(tvm.functionId(setDefaultPubkey));
     }
 
@@ -169,7 +169,7 @@ contract FidosafeDebot is Debot {
     }
 
     function deploySucceed() public {
-        Terminal.print(0, format("Your contract is ready!\n\nPlease navigate to https://fidosafe.com/#/{}/transactions (clickable)", fidoSafeAddress));
+        Terminal.print(0, format("Your contract is ready!\n\nPlease navigate to https://test.fidosafe.com/#/{}/transactions (clickable)", fidoSafeAddress));
     }
 
     function printError(uint32 sdkError, uint32 exitCode) public {
@@ -204,7 +204,7 @@ contract FidosafeDebot is Debot {
 
     function addUser(address fsAddress, uint32 trId, uint256 uPubkey) public {
         Terminal.print(0, format("Confirmation to add a user: {}", uPubkey));
-        Terminal.print(0, format("See the result at: https://fidosafe.com/#/{}/transactions (clickable)", fsAddress));
+        Terminal.print(0, format("See the result at: https://test.fidosafe.com/#/{}/transactions (clickable)", fsAddress));
         Fidosafe(fsAddress).addUser{
             abiVer: 2,
             extMsg: true,
@@ -227,7 +227,7 @@ contract FidosafeDebot is Debot {
 
     function changeReqConfirmations(address fsAddress, uint32 trId, uint8 newReqConfirmations) public {
         Terminal.print(0, format("Confirmation to change the num of confirmations to: {}", newReqConfirmations));
-        Terminal.print(0, format("See the result at: https://fidosafe.com/#/{}/transactions (clickable)", fsAddress));
+        Terminal.print(0, format("See the result at: https://test.fidosafe.com/#/{}/transactions (clickable)", fsAddress));
         Fidosafe(fsAddress).changeReqConfirmations{
             abiVer: 2,
             extMsg: true,
@@ -250,7 +250,7 @@ contract FidosafeDebot is Debot {
 
     function resolveTransaction(address fsAddress, uint32 trId, uint8 resolution) public {
         Terminal.print(0, format("Resolution: {}", resolution));
-        Terminal.print(0, format("See the result at: https://fidosafe.com/#/{}/transactions (clickable)", fsAddress));
+        Terminal.print(0, format("See the result at: https://test.fidosafe.com/#/{}/transactions (clickable)", fsAddress));
         Fidosafe(fsAddress).resolveTransaction{
             abiVer: 2,
             extMsg: true,
@@ -273,7 +273,7 @@ contract FidosafeDebot is Debot {
 
     function removeUser(address fsAddress, uint32 trId, uint256 uPubkey) public {
         Terminal.print(0, format("Confirmation to remove user: {}", uPubkey));
-        Terminal.print(0, format("See the result at: https://fidosafe.com/#/{}/transactions (clickable)", fsAddress));
+        Terminal.print(0, format("See the result at: https://test.fidosafe.com/#/{}/transactions (clickable)", fsAddress));
         Fidosafe(fsAddress).removeUser{
             abiVer: 2,
             extMsg: true,
@@ -296,7 +296,7 @@ contract FidosafeDebot is Debot {
 
     function sendTransfer(address fsAddress, uint32 trId, address recipient, uint128 value) public {
         Terminal.print(0, format("Confirmation to send {:t} EVER to address: {}", value, recipient));
-        Terminal.print(0, format("See the result at: https://fidosafe.com/#/{}/transactions (clickable)", fsAddress));
+        Terminal.print(0, format("See the result at: https://test.fidosafe.com/#/{}/transactions (clickable)", fsAddress));
         Fidosafe(fsAddress).sendTransfer{
             abiVer: 2,
             extMsg: true,

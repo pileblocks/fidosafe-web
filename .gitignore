@@ -27,3 +27,4 @@ pnpm-debug.log*
 *.abi.json
 *.tvc
 keys.json
+prod.keys.json

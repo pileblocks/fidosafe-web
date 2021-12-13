@@ -5,7 +5,7 @@
       <b-navbar-toggle target="nav-collapse"></b-navbar-toggle>
       <b-navbar-brand href="/#/">Fidosafe <i class="safe-version-label">1.0.7</i></b-navbar-brand>
         <b-collapse id="nav-collapse" is-nav>
-          <b-navbar-nav>
+          <b-navbar-nav class="mt-3">
             <b-nav-item :to="{ name: 'Transactions', params: { safeAddress: safeAddress } }" v-bind:disabled="!safeAddress"><i class="bi bi-arrow-left-right"></i>Transactions</b-nav-item>
             <b-nav-item :to="{ name: 'Users', params: { safeAddress: safeAddress } }" v-bind:disabled="!safeAddress" active-class="nav-item-active"><i class="bi bi-people-fill"></i> Users</b-nav-item>
             <b-nav-item :to="{ name: 'Settings', params: { safeAddress: safeAddress } }" v-bind:disabled="!safeAddress"><i class="bi bi-sliders"></i> Settings</b-nav-item>
