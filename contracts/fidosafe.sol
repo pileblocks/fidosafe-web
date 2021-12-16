@@ -29,10 +29,12 @@ contract Fidosafe {
     }
 
     mapping(uint32 => Transaction) mTransactions;
+    mapping(uint32 => Transaction) mTransactionsArchive;
 
     mapping(uint256 => User) mUsers;
 
     mapping(uint32 => Confirmation[]) mConfirmations;
+    mapping(uint32 => Confirmation[]) mConfirmationsArchive;
 
     uint8 constant USER_ROLE_ADMIN = 1;
     uint8 constant USER_ROLE_GUEST = 0;
@@ -56,18 +58,20 @@ contract Fidosafe {
     uint constant OP_CODE_NOPUB = 401;
     uint constant OP_CODE_NOTFOUND = 404;
 
+    uint128 constant INIT_BALANCE = 1_000_000_000;
     uint constant MINIMUM_RECEIVE_AMOUNT = 500_000_000;
     uint constant MINIMUM_SEND_AMOUNT = 300_000_000;
 
+    uint32 constant MAX_ARCHIVED_TRANSACTIONS = 144000;
+    uint256 constant MAX_TRANSACTIONS = 10;
 
     uint32 public currentTransactionId;
+    uint32 public currentConfirmationId;
     // Allows to modify the code
     uint32 version;
 
     // Number of confirmations necessary to approve an operation
     uint8 requiredConfirmations;
-
-    event UserCreated(string text, uint32 time);
 
     constructor(uint256 pubkey) public {
 
@@ -88,24 +92,24 @@ contract Fidosafe {
         params.store(pubkey);
         TvmCell paramsCell = params.toCell();
         Transaction tr = Transaction(trId, user, paramsCell, format("{}", pubkey), TR_STATUS_CONFIRMED, now, TR_TYPE_ADD_USER, now);
-        mTransactions[trId] = tr;
+        mTransactionsArchive[trId] = tr;
 
-        uint32 confId = genTransactionId();
+        uint32 confId = genConfirmationId();
         Confirmation conf = Confirmation(trId, confId, user, CONFIRMATION_ACCEPT, now);
-        mConfirmations[trId].push(conf);
+        mConfirmationsArchive[trId].push(conf);
 
 
         trId = genTransactionId();
         TvmBuilder receiveParams;
-        uint128 initBalance = 1_000_000_000;
+        uint128 initBalance = INIT_BALANCE;
         receiveParams.store(msg.sender, initBalance);
         paramsCell = receiveParams.toCell();
         tr = Transaction(trId, user, paramsCell, format("{}|{}", msg.sender, initBalance), TR_STATUS_CONFIRMED, now, TR_TYPE_RECEIVE, now);
-        mTransactions[trId] = tr;
+        mTransactionsArchive[trId] = tr;
 
-        confId = genTransactionId();
+        confId = genConfirmationId();
         conf = Confirmation(trId, confId, user, CONFIRMATION_ACCEPT, now);
-        mConfirmations[trId].push(conf);
+        mConfirmationsArchive[trId].push(conf);
 
     }
 
@@ -127,8 +131,15 @@ contract Fidosafe {
     //---------------------------------
 
     function genTransactionId() private returns (uint32) {
+        require(getActiveTransactionsNumber() < MAX_TRANSACTIONS, OP_CODE_CONFLICT, "Maximum number of active transactions reached");
         uint32 id = currentTransactionId;
         currentTransactionId += 1;
+        return id;
+    }
+
+    function genConfirmationId() private returns (uint32) {
+        uint32 id = currentConfirmationId;
+        currentConfirmationId += 1;
         return id;
     }
 
@@ -158,11 +169,24 @@ contract Fidosafe {
     }
 
     function addConfirmation(uint32 trId, User user) private {
-        uint32 confId = genTransactionId();
         if (!confExists(user, mConfirmations[trId])) {
+            uint32 confId = genConfirmationId();
             Confirmation conf = Confirmation(trId, confId, user, CONFIRMATION_ACCEPT, now);
             mConfirmations[trId].push(conf);
         }
+    }
+
+    function archiveTransaction(Transaction tr) private {
+        if (currentTransactionId >= MAX_ARCHIVED_TRANSACTIONS) {
+            optional(uint32, Transaction) trToDelete = mTransactionsArchive.delMin();
+            (uint32 oldTrId, Transaction oldTr) = trToDelete.get();
+            delete mTransactionsArchive[oldTrId];
+            delete mConfirmationsArchive[oldTrId];
+        }
+        mTransactionsArchive[tr.id] = tr;
+        delete mTransactions[tr.id];
+        mConfirmationsArchive[tr.id] = mConfirmations[tr.id];
+        delete mConfirmations[tr.id];
     }
 
     //
@@ -217,6 +241,7 @@ contract Fidosafe {
             params.store(pubkey);
             TvmCell paramsCell = params.toCell();
             tr = Transaction(trId, user, paramsCell, format("0x{:x}", pubkey), TR_STATUS_IN_PROGRESS, now, TR_TYPE_ADD_USER, now);
+            mTransactions[trId] = tr;
         }
 
         // add the confirmation if not already exists
@@ -225,7 +250,7 @@ contract Fidosafe {
         uint8 numUsers = uint8(getUsers().length);
 
         // check if the necessary amount of confirmations is received (including +1 from the user)
-        (uint8 accepted, uint8 declined) = getNumConfirmations(trId);
+        (uint8 accepted, uint8 declined) = getNumConfirmations(trId, true);
 
         // run the operation
         // change the transaction status
@@ -233,12 +258,14 @@ contract Fidosafe {
             tr.status = TR_STATUS_CONFIRMED;
             tr.completed = now;
             mUsers[pubkey] = User(pubkey, 1);
+            archiveTransaction(tr);
         }
         if (declined > numUsers - requiredConfirmations) {
             tr.status = TR_STATUS_DECLINED;
             tr.completed = now;
+            archiveTransaction(tr);
         }
-        mTransactions[trId] = tr;
+
     }
 
     function removeUser(uint32 trId, uint256 pubkey) onlyAdmin public {
@@ -265,6 +292,7 @@ contract Fidosafe {
             params.store(pubkey);
             TvmCell paramsCell = params.toCell();
             tr = Transaction(trId, user, paramsCell, format("0x{:x}", pubkey), TR_STATUS_IN_PROGRESS, now, TR_TYPE_REMOVE_USER, now);
+            mTransactions[trId] = tr;
         }
         // add the confirmation if not already exists
         addConfirmation(trId, user);
@@ -272,19 +300,20 @@ contract Fidosafe {
 
 
         // check if the necessary amount of confirmations is received (including +1 from the user)
-        (uint8 accepted, uint8 declined) = getNumConfirmations(trId);
+        (uint8 accepted, uint8 declined) = getNumConfirmations(trId, true);
         // run the operation
         // change the transaction status
         if (accepted >= requiredConfirmations) {
             tr.status = TR_STATUS_CONFIRMED;
             tr.completed = now;
             delete mUsers[pubkey];
+            archiveTransaction(tr);
         }
         if (declined > numUsers - requiredConfirmations) {
             tr.status = TR_STATUS_DECLINED;
             tr.completed = now;
+            archiveTransaction(tr);
         }
-        mTransactions[trId] = tr;
     }
 
     function changeReqConfirmations(uint32 trId, uint8 newReqConfirmations) onlyAdmin public {
@@ -308,12 +337,13 @@ contract Fidosafe {
             params.store(newReqConfirmations);
             TvmCell paramsCell = params.toCell();
             tr = Transaction(trId, user, paramsCell, format("{}", newReqConfirmations), TR_STATUS_IN_PROGRESS, now, TR_TYPE_CHANGE_CONFIRMS, now);
+            mTransactions[trId] = tr;
         }
         // add the confirmation if not already exists
         addConfirmation(trId, user);
 
         // check if the necessary amount of confirmations is received (including +1 from the user)
-        (uint8 accepted, uint8 declined) = getNumConfirmations(trId);
+        (uint8 accepted, uint8 declined) = getNumConfirmations(trId, true);
 
         // run the operation
         // change the transaction status
@@ -321,12 +351,13 @@ contract Fidosafe {
             tr.status = TR_STATUS_CONFIRMED;
             tr.completed = now;
             requiredConfirmations = newReqConfirmations;
+            archiveTransaction(tr);
         }
         if (declined > numUsers - requiredConfirmations) {
             tr.status = TR_STATUS_DECLINED;
             tr.completed = now;
+            archiveTransaction(tr);
         }
-        mTransactions[trId] = tr;
     }
 
     function resolveTransaction(uint32 trId, uint8 resolution) onlyAdmin public {
@@ -335,17 +366,17 @@ contract Fidosafe {
         User user = mUsers[msg.pubkey()];
         require(!confExists(user, mConfirmations[trId]), OP_CODE_CONFLICT, "You have already provided the resolution");
         require(resolution == CONFIRMATION_ACCEPT || resolution == CONFIRMATION_DECLINE, OP_CODE_INVALID, "Invalid resolution");
-        uint32 confId = genTransactionId();
+        uint32 confId = genConfirmationId();
         Confirmation conf = Confirmation(trId, confId, user, resolution, now);
         mConfirmations[trId].push(conf);
 
         uint8 numUsers = uint8(getUsers().length);
-        (, uint8 declined) = getNumConfirmations(trId);
+        (, uint8 declined) = getNumConfirmations(trId, true);
 
         if (declined > numUsers - requiredConfirmations) {
             Transaction tr = mTransactions[trId];
             tr.status = TR_STATUS_DECLINED;
-            mTransactions[trId] = tr;
+            archiveTransaction(tr);
         }
     }
 
@@ -371,6 +402,7 @@ contract Fidosafe {
             params.store(recipient, value);
             TvmCell paramsCell = params.toCell();
             tr = Transaction(trId, user, paramsCell, format("{}", value), TR_STATUS_IN_PROGRESS, now, TR_TYPE_SEND, now);
+            mTransactions[trId] = tr;
         }
 
         // add the confirmation if not already exists
@@ -379,7 +411,7 @@ contract Fidosafe {
         uint8 numUsers = uint8(getUsers().length);
 
         // check if the necessary amount of confirmations is received (including +1 from the user)
-        (uint8 accepted, uint8 declined) = getNumConfirmations(trId);
+        (uint8 accepted, uint8 declined) = getNumConfirmations(trId, true);
 
         // run the operation
         // change the transaction status
@@ -387,12 +419,13 @@ contract Fidosafe {
             tr.status = TR_STATUS_CONFIRMED;
             tr.completed = now;
             recipient.transfer(value, true, 1);
+            archiveTransaction(tr);
         }
         if (declined > numUsers - requiredConfirmations) {
             tr.status = TR_STATUS_DECLINED;
             tr.completed = now;
+            archiveTransaction(tr);
         }
-        mTransactions[trId] = tr;
     }
 
 
@@ -409,9 +442,11 @@ contract Fidosafe {
         Transaction tr = Transaction(trId, user, paramsCell, format("{}|{}", msg.sender, msg.value), TR_STATUS_CONFIRMED, now, TR_TYPE_RECEIVE, now);
         mTransactions[trId] = tr;
 
-        uint32 confId = genTransactionId();
+        uint32 confId = genConfirmationId();
         Confirmation conf = Confirmation(trId, confId, user, CONFIRMATION_ACCEPT, now);
         mConfirmations[trId].push(conf);
+
+        archiveTransaction(tr);
     }
 
 
@@ -425,11 +460,23 @@ contract Fidosafe {
         }
     }
 
-    function getTransactions(uint32 start, uint8 number) public view returns (Transaction[] transactions) {
-        uint32 id = start;
-        Transaction tr;
+    function getActiveTransactionsNumber() public view returns (uint256) {
+        Transaction[] transactions;
+        for ((, Transaction tr): mTransactions) {
+            transactions.push(tr);
+        }
+        return transactions.length;
+    }
 
-        optional(uint32, Transaction) firstPair = mTransactions.prevOrEq(id);
+    function getTransactions(uint32 start, uint8 number, bool isActive) public view returns (Transaction[] transactions) {
+        mapping(uint32 => Transaction) mTransactionStorage;
+
+        if (isActive == true)
+            mTransactionStorage = mTransactions;
+        else
+            mTransactionStorage = mTransactionsArchive;
+
+        optional(uint32, Transaction) firstPair = mTransactionStorage.prevOrEq(start);
 
         if (firstPair.hasValue()) {
 
@@ -437,7 +484,7 @@ contract Fidosafe {
 
             for (uint8 counter=0; counter < number; counter++) {
                 transactions.push(tr);
-                optional(uint32, Transaction) nextPair = mTransactions.prev(id);
+                optional(uint32, Transaction) nextPair = mTransactionStorage.prev(id);
 
                 if (nextPair.hasValue()) {
                     (uint32 newId, Transaction newTr) = nextPair.get();
@@ -452,8 +499,16 @@ contract Fidosafe {
         return transactions;
     }
 
-    function getConfirmations(uint32 trId) public view returns (Confirmation[] confirmations) {
-        require(mConfirmations.exists(trId), OP_CODE_NOTFOUND);
+    function getConfirmations(uint32 trId, bool isActive) public view returns (Confirmation[] confirmations) {
+
+        mapping(uint32 => Confirmation[]) mConfirmationsStorage;
+
+        if (isActive == true)
+            mConfirmationsStorage = mConfirmations;
+        else
+            mConfirmationsStorage = mConfirmationsArchive;
+
+        require(mConfirmationsStorage.exists(trId), OP_CODE_NOTFOUND);
         Confirmation[] confarr = mConfirmations[trId];
 
         for (Confirmation conf: confarr) {
@@ -462,7 +517,14 @@ contract Fidosafe {
         return confirmations;
     }
 
-    function getNumConfirmations(uint32 trId) public view returns (uint8 accepted, uint8 declined) {
+    function getNumConfirmations(uint32 trId, bool isActive) public view returns (uint8 accepted, uint8 declined) {
+
+        mapping(uint32 => Confirmation[]) mConfirmationsStorage;
+
+        if (isActive == true)
+            mConfirmationsStorage = mConfirmations;
+        else
+            mConfirmationsStorage = mConfirmationsArchive;
 
         accepted = 0;
         declined = 0;
