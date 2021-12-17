@@ -64,6 +64,7 @@ contract Fidosafe {
 
     uint32 constant MAX_ARCHIVED_TRANSACTIONS = 144000;
     uint256 constant MAX_TRANSACTIONS = 10;
+    uint8 constant MAX_USERS = 0xFF;
 
     uint32 public currentTransactionId;
     uint32 public currentConfirmationId;
@@ -74,11 +75,14 @@ contract Fidosafe {
     uint8 requiredConfirmations;
 
     constructor(uint256 pubkey) public {
-
-        currentTransactionId = 1;
-        version = 1_000_702;
         require(pubkey != 0, 120);
         tvm.accept();
+
+        currentTransactionId = 1;
+        currentConfirmationId = 1;
+
+        version = 1_000_702;
+
         User user = User(pubkey, 1);
         mUsers[pubkey] = user;
         requiredConfirmations = 1;
@@ -132,15 +136,13 @@ contract Fidosafe {
 
     function genTransactionId() private returns (uint32) {
         require(getActiveTransactionsNumber() < MAX_TRANSACTIONS, OP_CODE_CONFLICT, "Maximum number of active transactions reached");
-        uint32 id = currentTransactionId;
         currentTransactionId += 1;
-        return id;
+        return currentTransactionId;
     }
 
     function genConfirmationId() private returns (uint32) {
-        uint32 id = currentConfirmationId;
         currentConfirmationId += 1;
-        return id;
+        return currentConfirmationId;
     }
 
     function isActiveTransaction(uint32 trId) private view returns (bool) {
@@ -225,7 +227,7 @@ contract Fidosafe {
         tvm.accept();
         // Check if the user is already among the users
         require(!mUsers.exists(pubkey), OP_CODE_CONFLICT, "User already exists");
-
+        require(getUsers().length < MAX_USERS, OP_CODE_CONFLICT, "Max number of users reached");
         Transaction tr;
         User user = mUsers[msg.pubkey()];
         // Check if the transaction exists and its status is in progress, if not = create a transaction
@@ -531,7 +533,7 @@ contract Fidosafe {
         declined = 0;
 
         if (mConfirmations.exists(trId)) {
-            Confirmation[] confs = mConfirmations[trId];
+            Confirmation[] confs = mConfirmationsStorage[trId];
             for (Confirmation conf: confs) {
                 if (conf.resolution == CONFIRMATION_ACCEPT) {
                     accepted += 1;
