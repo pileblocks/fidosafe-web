@@ -179,12 +179,13 @@ contract Fidosafe {
     function archiveTransaction(Transaction tr) private {
         if (currentTransactionId >= MAX_ARCHIVED_TRANSACTIONS) {
             optional(uint32, Transaction) trToDelete = mTransactionsArchive.delMin();
-            (uint32 oldTrId, Transaction oldTr) = trToDelete.get();
+            (uint32 oldTrId, ) = trToDelete.get();
             delete mTransactionsArchive[oldTrId];
             delete mConfirmationsArchive[oldTrId];
         }
         mTransactionsArchive[tr.id] = tr;
         delete mTransactions[tr.id];
+
         mConfirmationsArchive[tr.id] = mConfirmations[tr.id];
         delete mConfirmations[tr.id];
     }
@@ -460,12 +461,12 @@ contract Fidosafe {
         }
     }
 
-    function getActiveTransactionsNumber() public view returns (uint256) {
-        Transaction[] transactions;
-        for ((, Transaction tr): mTransactions) {
-            transactions.push(tr);
+    function getActiveTransactionsNumber() public view returns (uint32) {
+        uint32 counter = 0;
+        for ((uint32 id,): mTransactions) {
+            counter += 1;
         }
-        return transactions.length;
+        return counter;
     }
 
     function getTransactions(uint32 start, uint8 number, bool isActive) public view returns (Transaction[] transactions) {
@@ -509,7 +510,7 @@ contract Fidosafe {
             mConfirmationsStorage = mConfirmationsArchive;
 
         require(mConfirmationsStorage.exists(trId), OP_CODE_NOTFOUND);
-        Confirmation[] confarr = mConfirmations[trId];
+        Confirmation[] confarr = mConfirmationsStorage[trId];
 
         for (Confirmation conf: confarr) {
             confirmations.push(conf);
