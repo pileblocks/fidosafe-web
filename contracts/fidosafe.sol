@@ -102,7 +102,6 @@ contract Fidosafe {
         Confirmation conf = Confirmation(trId, confId, user, CONFIRMATION_ACCEPT, now);
         mConfirmationsArchive[trId].push(conf);
 
-
         trId = genTransactionId();
         TvmBuilder receiveParams;
         uint128 initBalance = INIT_BALANCE;
@@ -300,8 +299,6 @@ contract Fidosafe {
         // add the confirmation if not already exists
         addConfirmation(trId, user);
 
-
-
         // check if the necessary amount of confirmations is received (including +1 from the user)
         (uint8 accepted, uint8 declined) = getNumConfirmations(trId, true);
         // run the operation
@@ -431,8 +428,6 @@ contract Fidosafe {
         }
     }
 
-
-
     receive() external {
         require(msg.value > MINIMUM_RECEIVE_AMOUNT, OP_CODE_CONFLICT, format("The message amount is less than minimum: {}", MINIMUM_RECEIVE_AMOUNT));
         tvm.accept();
@@ -451,7 +446,6 @@ contract Fidosafe {
 
         archiveTransaction(tr);
     }
-
 
     //---------------------------------
     // Off-chain functions
