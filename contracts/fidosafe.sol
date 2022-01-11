@@ -430,7 +430,7 @@ contract Fidosafe {
 
     receive() external {
         require(msg.value > MINIMUM_RECEIVE_AMOUNT, OP_CODE_CONFLICT, format("The message amount is less than minimum: {}", MINIMUM_RECEIVE_AMOUNT));
-        tvm.accept();
+
         User user = User(msg.pubkey(), 0);
 
         uint32 trId = genTransactionId();

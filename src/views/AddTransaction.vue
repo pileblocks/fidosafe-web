@@ -48,7 +48,7 @@
 import { DebotContractApi } from "../api/DebotContractApi";
 import { SAFE_MINIMUM_TRANSFER, SAFE_TRANSFER_FEES } from "../data/AppTypes";
 
-const ERR_LESS_THAN_MIN_TRANSFER = "Your amount is less than minimum available transfer. Please set the value to more than 0.3 EVER.";
+const ERR_LESS_THAN_MIN_TRANSFER = "Your amount is less than minimum available transfer. Please set the value to more than 0.31 EVER.";
 const ERR_MORE_THAN_BALANCE = "Amount exceeds the balance. Please check that more than 0.2 EVER remains on your balance for the fees.";
 
 export default {
